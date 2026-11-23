@@ -1,2 +1,0 @@
-Discord Social SDK zip dosyasini bu klasore cikar.
-(Icinde discord_social_sdk\include\discordpp.h olmali.)

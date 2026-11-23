@@ -1,4 +1,4 @@
 @echo off
-rem MiniDesktop-Setup.exe uretir (PyInstaller + Inno Setup).
+rem Builds dist\MiniDesktop-Setup-<VERSION>.exe (PyInstaller + Inno Setup).
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\build.ps1"
 pause

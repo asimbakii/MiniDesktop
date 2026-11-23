@@ -54,7 +54,7 @@ if (Test-Path $bridge) {
     if ($notices) { Copy-Item $notices.FullName (Join-Path $dst 'Discord-Social-SDK-License-Notices.txt') }
     Say 'Discord Social SDK koprusu eklendi.'
 } else {
-    Say 'Not: bridge\build\dcbridge.exe yok; arkadas listesi ozelligi pakette olmayacak (bridge\derle.bat).'
+    Say 'Not: bridge\build\dcbridge.exe yok; arkadas listesi ozelligi pakette olmayacak (bridge\build-bridge.bat).'
 }
 
 # 5) Inno Setup

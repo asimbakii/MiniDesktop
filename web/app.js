@@ -70,8 +70,12 @@ function deviceName() {
   // Chrome gizlilik için model adını çoğu zaman "K" olarak gönderir; o durumda genel ad kullan.
   const m = navigator.userAgent.match(/Android [\d.]+; ([^;)]+)/);
   const model = m ? m[1].replace(/ Build.*/, "").trim() : "";
+  const ua = navigator.userAgent;
+  if (/HarmonyOS|OpenHarmony|ArkWeb/i.test(ua)) return "HarmonyOS tablet";
+  // iPadOS Safari kendini Mac olarak tanıtır; dokunmatik ekranlı "Mac" = iPad
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "iPad";
   if (model && model !== "K") return model;
-  return /Android/.test(navigator.userAgent) ? "Android tablet" : "Tablet";
+  return /Android/.test(ua) ? "Android tablet" : "Tablet";
 }
 function showPair(msg) {
   $("#desk").hidden = true;

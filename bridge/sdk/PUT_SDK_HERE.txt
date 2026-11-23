@@ -1,0 +1,3 @@
+Extract the Discord Social SDK zip into this folder.
+It must contain discord_social_sdk\include\discordpp.h
+Then run bridge\build-bridge.bat

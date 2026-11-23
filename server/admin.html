@@ -133,7 +133,7 @@
     <h2>Geliştirici modu</h2>
     <h3>Claude Code durumu</h3>
     <div>Durum: <span class="status" id="cl-status">…</span></div>
-    <p class="muted">Kurulum, <code>~/.claude/settings.json</code> dosyasına MiniDesktop hook'larını ekler: SessionStart, UserPromptSubmit, PreToolUse, Notification, Stop, SessionEnd. Önce dosyanın yedeği alınır (<code>settings.json.minidesktop-yedek</code>). Diğer hook'larına dokunulmaz. Hook'lar sadece olay bilgisini bu PC'deki MiniDesktop'a iletir.</p>
+    <p class="muted">Kurulum, <code>~/.claude/settings.json</code> dosyasına MiniDesktop hook'larını ekler: SessionStart, UserPromptSubmit, PreToolUse, Notification, Stop, SessionEnd. Önce dosyanın yedeği alınır (<code>settings.json.minidesktop-backup</code>). Diğer hook'larına dokunulmaz. Hook'lar sadece olay bilgisini bu PC'deki MiniDesktop'a iletir.</p>
     <div class="row"><button class="primary" id="cl-install">Kur</button><button id="cl-uninstall">Kaldır</button></div>
 
     <h3>Git repoları</h3>
@@ -166,7 +166,10 @@
 
   <section class="card">
     <h2>Tablette uygulama olarak kur (isteğe bağlı)</h2>
-    <p>Tam ekran açılması, ekranın kapanmaması ve ana ekranda ikon olması için tabletteki Chrome'da bir kez:</p>
+    <p>MiniDesktop tarayıcıda çalışır; Android, iPad (iPadOS) ve HarmonyOS tabletlerde aynı adresle açılır.</p>
+    <p><b>iPad:</b> Safari'de MiniDesktop'ı aç → Paylaş <b>⎋</b> → <b>Ana Ekrana Ekle</b>. Ana ekrandaki ikondan tarayıcı çubukları olmadan açılır. Ekranın kapanmaması için Ayarlar → Ekran ve Parlaklık → Otomatik Kilit → <b>Hiçbir Zaman</b> (şarjdayken).</p>
+    <p><b>HarmonyOS:</b> Tarayıcı menüsünden <b>Ana ekrana ekle</b>. Huawei Tarayıcı'da da Chrome'daki gibi bir ayar yoksa ekran zaman aşımını uzat.</p>
+    <p><b>Android (Chrome):</b> Tam ekran açılması, ekranın kapanmaması ve ana ekranda ikon olması için bir kez:</p>
     <ol>
       <li>Adres çubuğuna yaz: <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code></li>
       <li>Kutuya şunu yaz: <code id="origin"></code> → <b>Enabled</b> → <b>Relaunch</b>.</li>

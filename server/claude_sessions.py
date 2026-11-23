@@ -134,7 +134,7 @@ class ClaudeSessions:
     def install(self):
         data = self._load()
         if SETTINGS.exists():
-            shutil.copy2(SETTINGS, SETTINGS.with_suffix(".json.minidesktop-yedek"))
+            shutil.copy2(SETTINGS, SETTINGS.with_suffix(".json.minidesktop-backup"))
         hooks = self._strip(data.get("hooks", {}))
         cmd = {"type": "command", "command": self.hook_command(), "timeout": 5}
         for e in HOOK_EVENTS:
@@ -150,7 +150,7 @@ class ClaudeSessions:
         data = self._load()
         if "hooks" not in data:
             return
-        shutil.copy2(SETTINGS, SETTINGS.with_suffix(".json.minidesktop-yedek"))
+        shutil.copy2(SETTINGS, SETTINGS.with_suffix(".json.minidesktop-backup"))
         hooks = self._strip(data["hooks"])
         if hooks:
             data["hooks"] = hooks
