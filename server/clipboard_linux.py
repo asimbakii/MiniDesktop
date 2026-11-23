@@ -60,15 +60,23 @@ def clipboard_get() -> str | None:
     return out.decode("utf-8", "replace")
 
 
+def _write(args, data: bytes):
+    # wl-copy / xclip panoyu sahiplenmek için arka planda kalır ve devraldığı çıktı borularını açık tutar.
+    # Çıktıyı yakalarsak communicate() hiç bitmez: o yüzden DEVNULL.
+    r = subprocess.run(args, input=data, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
+    if r.returncode != 0:
+        raise RuntimeError(t("Panoya yazılamadı."))
+
+
 def clipboard_set(text: str):
     tool = _tool()
     data = text.encode("utf-8")
     if tool == "wl":
-        _run(["wl-copy"], data)
+        _write(["wl-copy"], data)
     elif tool == "xclip":
-        _run(["xclip", "-selection", "clipboard", "-in"], data)
+        _write(["xclip", "-selection", "clipboard", "-in"], data)
     elif tool == "xsel":
-        _run(["xsel", "--clipboard", "--input"], data)
+        _write(["xsel", "--clipboard", "--input"], data)
     else:
         raise RuntimeError(t("Panoya yazılamadı.") + " (wl-clipboard / xclip)")
 
