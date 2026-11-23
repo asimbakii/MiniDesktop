@@ -2,6 +2,6 @@ data/
 .venv/
 __pycache__/
 build/
-dist/
-# editörlerin README rozetleri için indirdiði önbellek dosyalarý
-/6874747073*.svg
+dist/
+# editor caches of README badge images
+/6874747073*.svg
