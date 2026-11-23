@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MiniDesktop Yönetim</title>
+<style>
+  :root { --bg:#f3f3f3; --card:#fff; --text:#1b1b1b; --muted:#616161; --line:#e5e5e5; --accent:#0067c0; --ok:#0f7b0f; --bad:#c42b1c; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#202020; --card:#2b2b2b; --text:#fff; --muted:#a0a0a0; --line:#3a3a3a; --accent:#4cc2ff; --ok:#6ccb5f; --bad:#ff99a4; } }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 "Segoe UI Variable","Segoe UI",system-ui,sans-serif; }
+  main { max-width:880px; margin:0 auto; padding:28px 16px 60px; display:grid; gap:16px; }
+  h1 { font-size:26px; font-weight:600; margin:0 0 4px } h2 { font-size:17px; font-weight:600; margin:0 0 12px }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:20px; }
+  .pair { display:grid; grid-template-columns:200px 1fr; gap:24px; align-items:center }
+  .qr { background:#fff; border-radius:8px; padding:8px; } .qr svg { width:100%; height:auto; display:block }
+  .pin { font-size:40px; letter-spacing:8px; font-weight:600; font-variant-numeric:tabular-nums }
+  code { background:var(--bg); padding:2px 6px; border-radius:4px; font-size:13px; word-break:break-all }
+  .muted { color:var(--muted) } ol { padding-left:20px; margin:8px 0 14px } li { margin:4px 0 }
+  label { display:block; font-weight:600; margin:10px 0 4px }
+  input { width:100%; padding:8px 10px; border:1px solid var(--line); border-bottom:2px solid var(--muted); border-radius:4px; background:var(--bg); color:var(--text); font:inherit }
+  button { font:inherit; padding:7px 16px; border-radius:4px; border:1px solid var(--line); background:var(--bg); color:var(--text); cursor:pointer }
+  button.primary { background:var(--accent); color:#fff; border-color:transparent } @media (prefers-color-scheme: dark){ button.primary{ color:#000 } }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:12px }
+  .dev { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-top:1px solid var(--line) }
+  .warn { border-color: var(--bad); border-width: 2px; }
+  select { font:inherit; padding:4px 8px; border-radius:4px; border:1px solid var(--line); background:var(--bg); color:var(--text); }
+  h3 { font-size:14px; font-weight:600; margin:18px 0 4px }
+  label.chk { display:flex; gap:8px; align-items:center; font-weight:400; margin:6px 0 }
+  label.chk input { width:auto }
+  input.small { width:auto; min-width:90px }
+  textarea { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:4px; background:var(--bg); color:var(--text); font:13px/1.4 Consolas, "Cascadia Mono", monospace; resize:vertical }
+  .rows { display:grid; gap:6px; margin:6px 0 }
+  .rows .r { display:grid; grid-template-columns: 140px 1fr 1fr 32px; gap:6px; align-items:start }
+  .rows .r.snip { grid-template-columns: 140px 1fr 32px }
+  .rows input, .rows textarea { font:13px Consolas, "Cascadia Mono", monospace }
+  @media (max-width:600px){ .rows .r, .rows .r.snip { grid-template-columns: 1fr } }
+  details.adv { margin-top:14px; border-top:1px solid var(--line); padding-top:10px }
+  details.adv summary { cursor:pointer; font-weight:600; color:var(--accent) }
+  ol.wiz li { margin:8px 0 } ol.wiz li.dim { opacity:.45; pointer-events:none }
+  ol.wiz input { margin-top:4px; max-width:420px }
+  button.mini { padding:2px 8px; font-size:12px }
+  .status { font-weight:600 } .ok { color:var(--ok) } .bad { color:var(--bad) }
+  @media (max-width:600px){ .pair{ grid-template-columns:1fr } .qr{ max-width:220px } }
+</style>
+</head>
+<body>
+<main>
+  <div><h1>MiniDesktop</h1><div class="muted">Bu sayfa sadece bu PC'den açılır.</div></div>
+
+  <section class="card warn" id="ipwarn" hidden>
+    <h2>PC'nin ağ adresi değişti</h2>
+    <p>Modem bu PC'ye yeni bir adres verdi (<code id="oldip"></code> → <code id="newip"></code>). Tablet eski adrese bağlanmaya çalışıyor: aşağıdaki QR kodu tabletle <b>yeniden okut</b>. Tablette uygulama olarak kurduysan Chrome ayarındaki adresi de güncelle (en alttaki bölüm).</p>
+    <p class="muted">Bunun tekrar olmaması için modem arayüzünden bu PC'ye sabit IP ver ("DHCP rezervasyonu").</p>
+  </section>
+
+  <section class="card">
+    <h2>Tableti eşle</h2>
+    <div class="pair">
+      <div class="qr" id="qr"></div>
+      <div>
+        <p>Tablet bu PC ile <b>aynı Wi-Fi ağında</b> olmalı. Tabletin kamerasıyla QR kodu okut ya da Chrome'da şu adresi açıp PIN'i gir:</p>
+        <p><code id="url"></code></p>
+        <p id="addrrow" hidden><label for="addr" style="display:inline;margin:0">Ağ adaptörü: </label><select id="addr"></select></p>
+        <div class="muted">PIN</div>
+        <div class="pin" id="pin">------</div>
+        <p class="muted">Açılmazsa: Windows Güvenlik Duvarı izni sorduğunda "Özel ağlar"a izin ver ve Wi-Fi ağ profilini "Özel" yap.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Eşli cihazlar</h2>
+    <div id="devices" class="muted">Henüz eşli cihaz yok.</div>
+  </section>
+
+  <section class="card">
+    <h2>Discord: arkadaşlar ve mesajlar</h2>
+    <div>Durum: <span class="status" id="sstatus">…</span></div>
+    <div id="serror" class="bad"></div>
+    <p>Arkadaş listesi, kimin çevrimiçi olduğu ve okunmamış DM'ler. Developer Portal gerekmez: düğmeye bas, Discord'da açılan pencerede <b>Yetkilendir</b>'e tıkla.</p>
+    <div class="row"><button class="primary" id="s-connect">Discord ile bağlan</button><button id="s-disconnect">Bağlantıyı kes</button><button id="sreauth">Yeniden yetkilendir</button></div>
+    <details class="adv"><summary>Gelişmiş: kendi Discord uygulamamı kullan</summary>
+      <p class="muted">Varsayılan olarak MiniDesktop'un paylaşılan uygulaması kullanılır. Kendi uygulamanı kullanmak için: Developer Portal'da uygulama aç → OAuth2'de Redirects'e <code>http://127.0.0.1/callback</code> ekle ve <b>Public Client</b>'ı aç → <b>Social SDK → Getting Started</b> formunu gönder → Application ID'yi buraya gir. Boş bırakıp kaydedersen paylaşılan uygulamaya döner.</p>
+      <form id="sform">
+        <label for="sappid">Application ID</label><input id="sappid" inputmode="numeric" autocomplete="off" placeholder="Boş = paylaşılan uygulama">
+        <div class="row"><button type="submit">Kaydet ve bağlan</button></div>
+      </form>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Discord: mikrofon ve kulaklık</h2>
+    <div>Şu an: <span class="status" id="dmode">…</span></div>
+    <h3>Kısayol tuşu modu (kurulumsuz)</h3>
+    <p class="muted">Tablet, Discord'un kendi kısayol tuşlarını PC'ye gönderir. Bu modda mikrofonun açık mı kapalı mı olduğu tablette görünmez.</p>
+    <ol>
+      <li>Discord → ⚙ Kullanıcı Ayarları → <b>Tuş Atamaları</b> → <b>Tuş Ataması Ekle</b>.</li>
+      <li>Eylem: <b>Sesi Kapat Aç/Kapat</b> (Toggle Mute) → Tuş: <code id="k-mute-l"></code></li>
+      <li>Bir tane daha: <b>Sağırlaştır Aç/Kapat</b> (Toggle Deafen) → Tuş: <code id="k-deaf-l"></code></li>
+      <li>Aşağıdaki <b>Dene</b> düğmeleriyle çalıştığını kontrol et (Discord'un sol alttaki mikrofon simgesi değişmeli).</li>
+    </ol>
+    <label class="chk"><input type="checkbox" id="k-enabled"> Kısayol tuşu modunu kullan</label>
+    <div class="row"><span>Sessize al:</span><input id="k-mute" class="small"><span>Sağırlaştır:</span><input id="k-deaf" class="small"></div>
+    <div class="row"><button class="primary" id="k-save">Kaydet</button><button id="k-test-mute">Dene: sessize al</button><button id="k-test-deaf">Dene: sağırlaştır</button><span id="k-msg"></span></div>
+
+    <details class="adv" id="rpc-adv"><summary>Gelişmiş: tam kontrol (durum + ses kanalı), kendi Discord uygulamanla</summary>
+      <p class="muted">Discord bu bağlantıya sadece uygulamanın sahibi için izin veriyor; bu yüzden herkesin kendi uygulamasını açması gerekir. Yaklaşık 3 dakika sürer:</p>
+      <div>Durum: <span class="status" id="dstatus">…</span></div>
+      <div id="derror" class="bad"></div>
+      <ol class="wiz">
+        <li><a href="https://discord.com/developers/applications" target="_blank">Developer Portal</a>'da <b>New Application</b> → bir ad ver (örn. "MiniDesktop") → oluştur.</li>
+        <li>Açılan sayfadaki <b>Application ID</b>'yi kopyalayıp buraya yapıştır:<br><input id="cid" autocomplete="off" inputmode="numeric" placeholder="Application ID"></li>
+        <li id="wiz-3" class="dim"><a id="wiz-oauth" target="_blank">Uygulamanın OAuth2 sayfasını aç</a> → <b>Redirects</b>'e <code>http://localhost</code> ekle <button type="button" class="mini" data-copy="http://localhost">Kopyala</button> → <b>Save Changes</b>.</li>
+        <li id="wiz-4" class="dim">Aynı sayfada <b>Reset Secret</b> → çıkan anahtarı kopyala ve yapıştır:<br><input id="csec" type="password" autocomplete="off" placeholder="Client Secret"></li>
+        <li id="wiz-5" class="dim"><button class="primary" id="dconnect">Kaydet ve bağlan</button> → Discord'da çıkan pencerede <b>Yetkilendir</b>.</li>
+      </ol>
+      <div class="row"><button type="button" id="dreset">Yetkiyi sıfırla</button></div>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Modlar</h2>
+    <p class="muted">Mod tabletten, görev çubuğundaki <b>Başlat</b> düğmesiyle değişir. Burada otomatik geçişleri ayarlarsın.</p>
+    <label class="chk"><input type="checkbox" id="m-game"> Oyun açılınca <b>Oyun modu</b>na geç, kapanınca geri dön</label>
+    <label class="chk"><input type="checkbox" id="m-night"> Gece saatlerinde <b>Gece modu</b>na geç</label>
+    <div class="row"><span>Gece:</span><input type="time" id="m-from" class="small"><span>–</span><input type="time" id="m-to" class="small"></div>
+    <div class="row"><span>Bekleme ekranı:</span><input type="number" id="m-idle" class="small" min="0" max="120"><span class="muted">dakika (0 = kapalı)</span></div>
+    <div class="row"><button class="primary" id="m-save">Kaydet</button><span id="m-msg" class="muted"></span></div>
+  </section>
+
+  <section class="card">
+    <h2>Geliştirici modu</h2>
+    <h3>Claude Code durumu</h3>
+    <div>Durum: <span class="status" id="cl-status">…</span></div>
+    <p class="muted">Kurulum, <code>~/.claude/settings.json</code> dosyasına MiniDesktop hook'larını ekler: SessionStart, UserPromptSubmit, PreToolUse, Notification, Stop, SessionEnd. Önce dosyanın yedeği alınır (<code>settings.json.minidesktop-yedek</code>). Diğer hook'larına dokunulmaz. Hook'lar sadece olay bilgisini bu PC'deki MiniDesktop'a iletir.</p>
+    <div class="row"><button class="primary" id="cl-install">Kur</button><button id="cl-uninstall">Kaldır</button></div>
+
+    <h3>Git repoları</h3>
+    <p class="muted">Her satıra bir klasör. Claude Code'un çalıştığı repolar listeye kendiliğinden eklenir. <span id="gh-note"></span></p>
+    <textarea id="dv-repos" rows="3" placeholder="C:\Users\...\projem"></textarea>
+
+    <h3>Komut butonları</h3>
+    <p class="muted">Tabletten başlatıp durdurabileceğin komutlar (cmd.exe ile çalışır).</p>
+    <div id="dv-cmds" class="rows"></div>
+    <button id="dv-addcmd">+ Komut ekle</button>
+
+    <h3>Snippet'ler</h3>
+    <p class="muted">Tabletten dokununca PC panosuna kopyalanır.</p>
+    <div id="dv-snips" class="rows"></div>
+    <button id="dv-addsnip">+ Snippet ekle</button>
+
+    <div class="row"><button class="primary" id="dv-save">Geliştirici ayarlarını kaydet</button><span id="dv-msg"></span></div>
+  </section>
+
+  <section class="card">
+    <h2>Hava durumu</h2>
+    <div>Şu an: <b id="wnow">ayarlanmadı</b></div>
+    <div id="werror" class="bad"></div>
+    <form id="wform">
+      <label for="wcity">Şehir</label><input id="wcity" placeholder="örn. İstanbul" autocomplete="off" required>
+      <div class="row"><button class="primary" type="submit">Kaydet</button></div>
+    </form>
+    <p class="muted">Veriler Open-Meteo'dan gelir (ücretsiz, hesap gerekmez). Servise sadece şehir adı gönderilir.</p>
+  </section>
+
+  <section class="card">
+    <h2>Tablette uygulama olarak kur (isteğe bağlı)</h2>
+    <p>Tam ekran açılması, ekranın kapanmaması ve ana ekranda ikon olması için tabletteki Chrome'da bir kez:</p>
+    <ol>
+      <li>Adres çubuğuna yaz: <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code></li>
+      <li>Kutuya şunu yaz: <code id="origin"></code> → <b>Enabled</b> → <b>Relaunch</b>.</li>
+      <li>MiniDesktop'ı aç → Chrome menüsü (⋮) → <b>Uygulamayı yükle</b> / <b>Ana ekrana ekle</b>.</li>
+    </ol>
+    <p class="muted">Bu ayar sadece bu adres için geçerli. PC'nin IP'si değişirse buradaki adres de değişir; ayarı güncellemen gerekir.</p>
+  </section>
+
+  <section class="card">
+    <h2>CPU sıcaklığı</h2>
+    <div>Şu an: <b id="ctemp">—</b></div>
+    <p class="muted">Windows Ryzen sıcaklığını doğrudan vermez. <a href="https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases" target="_blank">LibreHardwareMonitor</a>'ü indir, <b>yönetici olarak</b> çalıştır, <b>Options → Remote Web Server → Run</b>'ı aç (port 8085). Değer otomatik gelir.</p>
+  </section>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const STATUS = { not_configured:["Ayarlanmadı",""], disconnected:["Discord açık değil","bad"], connecting:["Bağlanıyor…",""], authorizing:["Discord'daki izin penceresini onayla","bad"], ready:["Bağlı","ok"], error:["Hata","bad"] };
+async function api(path, body) {
+  const r = await fetch(path, body ? { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) } : {});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || r.statusText);
+  return j;
+}
+let shownUrl = "";
+let chosenIp = "";
+const params = new URLSearchParams(location.search);
+async function load() {
+  const d = await api("/api/admin/info" + (chosenIp ? "?ip=" + encodeURIComponent(chosenIp) : ""));
+  if (d.url !== shownUrl) { $("#qr").innerHTML = d.qr; shownUrl = d.url; }
+  $("#url").textContent = d.base + "/";
+  $("#origin").textContent = d.base;
+  // Birden fazla ağ adaptörü varsa seçtir
+  const sel = $("#addr");
+  $("#addrrow").hidden = d.addresses.length < 2;
+  const opts = d.addresses.map((a) => `${a.ip}|${a.iface}`).join(",");
+  if (sel.dataset.opts !== opts) {
+    sel.dataset.opts = opts;
+    sel.replaceChildren(...d.addresses.map((a) => {
+      const o = document.createElement("option");
+      o.value = a.ip;
+      o.textContent = `${a.ip} — ${a.iface}${a.virtual ? " (sanal)" : ""}`;
+      return o;
+    }));
+  }
+  sel.value = d.ip;
+  const old = params.get("ipchanged");
+  if (old && old !== d.ip) { $("#ipwarn").hidden = false; $("#oldip").textContent = old; $("#newip").textContent = d.ip; }
+  $("#pin").textContent = d.pin;
+  const devs = $("#devices");
+  devs.replaceChildren();
+  if (!d.devices.length) devs.textContent = "Henüz eşli cihaz yok.";
+  for (const dev of d.devices) {
+    const row = document.createElement("div"); row.className = "dev";
+    const info = document.createElement("div");
+    info.innerHTML = `<b></b><div class="muted"></div>`;
+    info.querySelector("b").textContent = dev.name;
+    info.querySelector(".muted").textContent = dev.last_seen ? "Son görülme: " + new Date(dev.last_seen * 1000).toLocaleTimeString("tr-TR") : "Eşlenme: " + new Date(dev.created * 1000).toLocaleDateString("tr-TR");
+    const b = document.createElement("button"); b.textContent = "Kaldır";
+    b.onclick = async () => { await api("/api/admin/revoke", { id: dev.id }); load(); };
+    row.append(info, b); devs.append(row);
+  }
+  const [label, cls] = STATUS[d.discord.status] || [d.discord.status, ""];
+  const st = $("#dstatus");
+  st.textContent = label + (d.discord.user ? ` — ${d.discord.user.name}` : "");
+  st.className = "status " + cls;
+  $("#derror").textContent = d.discord.error || "";
+  if (d.discord.client_id && !$("#cid").value) { $("#cid").value = d.discord.client_id; wizUpdate(); }
+  if (d.discord.configured && !rpcOpened) { rpcOpened = true; $("#rpc-adv").open = true; }
+  const k = d.discord.keys;
+  $("#k-mute-l").textContent = k.mute; $("#k-deaf-l").textContent = k.deaf;
+  if (!keysLoaded) { keysLoaded = true; $("#k-enabled").checked = k.enabled; $("#k-mute").value = k.mute_raw; $("#k-deaf").value = k.deaf_raw; }
+  const dm = $("#dmode");
+  if (d.discord.control === "rpc") { dm.textContent = "Tam kontrol" + (d.discord.user ? " — " + d.discord.user.name : ""); dm.className = "status ok"; }
+  else if (d.discord.control === "keys") { dm.textContent = "Kısayol tuşu modu (" + k.mute + " / " + k.deaf + ")"; dm.className = "status ok"; }
+  else { dm.textContent = "Kapalı"; dm.className = "status"; }
+  // Modlar (sadece ilk yüklemede doldur; kullanıcı düzenlerken üzerine yazma)
+  if (!modesLoaded) {
+    modesLoaded = true;
+    $("#m-game").checked = d.modes.auto_game;
+    $("#m-night").checked = d.modes.auto_night;
+    $("#m-from").value = d.modes.night_from;
+    $("#m-to").value = d.modes.night_to;
+    $("#m-idle").value = d.modes.idle_min;
+  }
+  // Claude Code
+  $("#cl-status").textContent = d.claude.installed ? `Kurulu — ${d.claude.sessions} aktif oturum` : "Kurulu değil";
+  $("#cl-status").className = "status " + (d.claude.installed ? "ok" : "");
+  $("#cl-install").textContent = d.claude.installed ? "Yeniden kur" : "Kur";
+  $("#gh-note").textContent = d.gh ? "GitHub CLI (gh) bulundu: PR'lar ve CI durumu da gösterilir." : "GitHub CLI (gh) bulunamadı: sadece yerel git bilgisi gösterilir.";
+  if (!devLoaded) { devLoaded = true; fillDev(d.devcfg); }
+  const w = d.weather;
+  $("#wnow").textContent = w.label ? `${w.label}${w.temp != null ? ` — ${Math.round(w.temp)}°C, ${w.desc}` : ""}` : "ayarlanmadı";
+  $("#werror").textContent = w.error || "";
+  const s = d.social;
+  const SST = { not_configured:["Bağlı değil",""], no_bridge:["Bu kurulumda köprü yok","bad"], starting:["Başlıyor…",""], authorizing:["Discord'daki izin penceresini onayla","bad"], connecting:["Bağlanıyor…",""], ready:["Bağlı","ok"], disconnected:["Bağlantı koptu","bad"], stopped:["Durdu",""], error:["Hata","bad"] };
+  const [sl, sc] = SST[s.status] || [s.status, ""];
+  $("#sstatus").textContent = sl + (s.status === "ready" && s.me ? ` — ${s.me.name}, ${s.friends} arkadaş` : "");
+  $("#sstatus").className = "status " + sc;
+  $("#serror").textContent = s.error || "";
+  $("#s-connect").hidden = s.enabled;
+  $("#s-disconnect").hidden = $("#sreauth").hidden = !s.enabled;
+  if (s.custom_app && !sappLoaded) { sappLoaded = true; $("#sappid").value = s.app_id; }
+  $("#ctemp").textContent = d.cpu_temp != null ? d.cpu_temp.toFixed(0) + " °C" : "okunamıyor";
+}
+let modesLoaded = false, devLoaded = false, keysLoaded = false, rpcOpened = false, sappLoaded = false;
+function wizUpdate() {
+  const id = $("#cid").value.trim();
+  const ok = /^\d{15,22}$/.test(id);
+  for (const n of ["#wiz-3", "#wiz-4", "#wiz-5"]) $(n).classList.toggle("dim", !ok);
+  $("#wiz-oauth").href = ok ? "https://discord.com/developers/applications/" + id + "/oauth2" : "#";
+}
+$("#cid").oninput = wizUpdate;
+for (const b of document.querySelectorAll("button[data-copy]")) {
+  b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Kopyalandı ✓"; setTimeout(() => (b.textContent = "Kopyala"), 1500); } catch {} };
+}
+$("#s-connect").onclick = async () => { try { await api("/api/admin/social/connect", {}); load(); } catch (err) { $("#serror").textContent = err.message; } };
+$("#s-disconnect").onclick = async () => { await api("/api/admin/social/disconnect", {}); load(); };
+const keyMsg = (t, ok = true) => { $("#k-msg").className = ok ? "ok" : "bad"; $("#k-msg").textContent = t; setTimeout(() => ($("#k-msg").textContent = ""), 3000); };
+$("#k-save").onclick = async () => {
+  try { await api("/api/admin/discord/keys", { enabled: $("#k-enabled").checked, mute: $("#k-mute").value, deaf: $("#k-deaf").value }); keysLoaded = false; keyMsg("Kaydedildi ✓"); load(); }
+  catch (err) { keyMsg(err.message, false); }
+};
+$("#k-test-mute").onclick = async () => { await api("/api/admin/discord/keys", { test: "mute" }); keyMsg("Gönderildi: Discord'da mikrofon simgesine bak"); };
+$("#k-test-deaf").onclick = async () => { await api("/api/admin/discord/keys", { test: "deaf" }); keyMsg("Gönderildi: Discord'da kulaklık simgesine bak"); };
+$("#m-save").onclick = async () => {
+  try {
+    await api("/api/admin/modes", { auto_game: $("#m-game").checked, auto_night: $("#m-night").checked, night_from: $("#m-from").value, night_to: $("#m-to").value, idle_min: Number($("#m-idle").value || 0) });
+    $("#m-msg").textContent = "Kaydedildi ✓";
+  } catch (err) { $("#m-msg").textContent = err.message; }
+};
+$("#cl-install").onclick = async () => { await api("/api/admin/claude", { action: "install" }); load(); };
+$("#cl-uninstall").onclick = async () => { await api("/api/admin/claude", { action: "uninstall" }); load(); };
+
+function rowInput(val, ph, area) {
+  const i = document.createElement(area ? "textarea" : "input");
+  if (area) i.rows = 2;
+  i.value = val || "";
+  i.placeholder = ph;
+  return i;
+}
+function addCmdRow(c = {}) {
+  const r = document.createElement("div"); r.className = "r"; r.dataset.id = c.id || "";
+  const del = document.createElement("button"); del.type = "button"; del.textContent = "✕"; del.onclick = () => r.remove();
+  r.append(rowInput(c.name, "Ad (örn. Dev server)"), rowInput(c.cmd, "Komut (örn. npm run dev)"), rowInput(c.cwd, "Klasör (isteğe bağlı)"), del);
+  $("#dv-cmds").append(r);
+}
+function addSnipRow(s = {}) {
+  const r = document.createElement("div"); r.className = "r snip"; r.dataset.id = s.id || "";
+  const del = document.createElement("button"); del.type = "button"; del.textContent = "✕"; del.onclick = () => r.remove();
+  r.append(rowInput(s.name, "Ad"), rowInput(s.text, "Metin", true), del);
+  $("#dv-snips").append(r);
+}
+function fillDev(cfg) {
+  $("#dv-repos").value = (cfg.repos || []).join("\n");
+  $("#dv-cmds").replaceChildren(); $("#dv-snips").replaceChildren();
+  (cfg.commands || []).forEach(addCmdRow);
+  (cfg.snippets || []).forEach(addSnipRow);
+}
+$("#dv-addcmd").onclick = () => addCmdRow();
+$("#dv-addsnip").onclick = () => addSnipRow();
+$("#dv-save").onclick = async () => {
+  const vals = (r) => [...r.querySelectorAll("input, textarea")].map((i) => i.value);
+  const body = {
+    repos: $("#dv-repos").value.split("\n").map((x) => x.trim()).filter(Boolean),
+    commands: [...$("#dv-cmds").children].map((r) => { const [name, cmd, cwd] = vals(r); return { id: r.dataset.id, name, cmd, cwd }; }),
+    snippets: [...$("#dv-snips").children].map((r) => { const [name, text] = vals(r); return { id: r.dataset.id, name, text }; }),
+  };
+  try {
+    const res = await api("/api/admin/devconfig", body);
+    fillDev(res.devcfg);
+    $("#dv-msg").className = "ok"; $("#dv-msg").textContent = "Kaydedildi ✓";
+  } catch (err) { $("#dv-msg").className = "bad"; $("#dv-msg").textContent = err.message; }
+};
+$("#wform").onsubmit =async (e) => {
+  e.preventDefault();
+  $("#werror").textContent = "";
+  try { const r = await api("/api/admin/weather", { city: $("#wcity").value }); $("#wcity").value = ""; $("#wnow").textContent = r.label + " — yükleniyor…"; }
+  catch (err) { $("#werror").textContent = err.message; }
+};
+$("#addr").onchange =(e) => { chosenIp = e.target.value; load(); };
+$("#dconnect").onclick = async () => {
+  try { await api("/api/admin/discord", { client_id: $("#cid").value.trim(), client_secret: $("#csec").value.trim() }); $("#csec").value = ""; load(); }
+  catch (err) { $("#derror").textContent = err.message; }
+};
+$("#sform").onsubmit = async (e) => {
+  e.preventDefault();
+  try { await api("/api/admin/social/connect", { app_id: $("#sappid").value.trim() }); load(); }
+  catch (err) { $("#serror").textContent = err.message; }
+};
+$("#sreauth").onclick = async () => { await api("/api/admin/social/reauth", {}); load(); };
+$("#dreset").onclick =async () => { await api("/api/admin/discord/reset", {}); load(); };
+load(); setInterval(load, 2500);
+</script>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b0b0c">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>MiniDesktop</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="dev.css">
+</head>
+<body>
+<div id="wallpaper"></div>
+
+<!-- Eşleme ekranı -->
+<section id="pair" hidden>
+  <div class="pair-card">
+    <img src="icon.svg" alt="" width="56" height="56">
+    <h1>MiniDesktop</h1>
+    <p id="pair-msg">PC'deki MiniDesktop penceresinde görünen 6 haneli PIN'i gir.</p>
+    <form id="pair-form">
+      <input id="pair-pin" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="••••••" aria-label="PIN">
+      <button type="submit">Eşle</button>
+    </form>
+    <p id="pair-err" class="err"></p>
+  </div>
+</section>
+
+<!-- Masaüstü -->
+<div id="desk" hidden>
+  <main class="windows">
+
+    <!-- Müzik: YT Music / Spotify mini oynatıcı -->
+    <article class="win music theme-ytm" id="w-music">
+      <header class="titlebar"><span class="tb-icon" id="music-logo"></span><span id="music-app">YouTube Music</span><span class="chip" id="music-src"></span></header>
+      <div class="music-body">
+        <div class="art-wrap"><img id="art" alt=""><div id="art-empty">♪</div></div>
+        <div class="music-info">
+          <div class="sources" id="sources"></div>
+          <div class="m-title" id="m-title">Şu an bir şey çalmıyor</div>
+          <div class="m-artist" id="m-artist">YT Music'te bir şarkı başlat</div>
+          <div class="progress" id="progress"><div class="bar"><div class="fill" id="p-fill"></div><div class="knob" id="p-knob"></div></div></div>
+          <div class="times"><span id="t-pos">0:00</span><span id="t-dur">0:00</span></div>
+          <div class="controls">
+            <button class="ctl" id="b-prev" aria-label="Önceki"></button>
+            <button class="ctl play" id="b-play" aria-label="Oynat/Duraklat"></button>
+            <button class="ctl" id="b-next" aria-label="Sonraki"></button>
+          </div>
+          <div class="m-vol"><button class="ico" id="mv-mute" aria-label="Sessiz"></button><input type="range" min="0" max="100" id="mv-range" aria-label="Oynatıcı ses seviyesi"></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Discord -->
+    <article class="win discord" id="w-discord">
+      <header class="titlebar dc-tb"><span class="tb-icon dc-logo"></span>Discord<span class="badge tb-badge" id="dc-total" hidden></span></header>
+      <div class="dc-main">
+        <div class="dc-head" id="dc-head"></div>
+        <div class="dc-scroll" id="dc-body"></div>
+        <div class="dc-voice" id="dc-voice" hidden></div>
+        <div class="dc-user" id="dc-user"></div>
+      </div>
+    </article>
+
+    <!-- Görev Yöneticisi -->
+    <article class="win taskmgr" id="w-stats">
+      <header class="titlebar tm-tb"><span class="tb-icon tm-logo"></span>Görev Yöneticisi <span class="tm-tab">Performans</span></header>
+      <div class="game-banner" id="game-banner" hidden></div>
+      <div class="rings" id="rings"></div>
+    </article>
+
+    <!-- Ses karıştırıcısı -->
+    <article class="win mixer" id="w-mixer">
+      <header class="titlebar mx-tb"><span class="tb-icon mx-logo"></span>Ses karıştırıcısı</header>
+      <div class="mx-body">
+        <div class="mx-section">Çıkış</div>
+        <div class="mx-row master" id="mx-master"></div>
+        <div class="mx-section">Uygulamalar</div>
+        <div class="mx-apps" id="mx-apps"></div>
+      </div>
+    </article>
+
+    <!-- ===== Geliştirici modu pencereleri ===== -->
+    <article class="win term devwin" id="w-claude">
+      <header class="titlebar term-tb"><span class="term-tab on"><span class="tb-icon term-logo">&gt;_</span>Claude Code</span><span class="term-count" id="cl-count"></span></header>
+      <div class="term-body" id="cl-body"></div>
+    </article>
+
+    <article class="win vsc devwin" id="w-git">
+      <header class="titlebar vsc-tb"><span class="tb-icon vsc-logo"></span>Kaynak Denetimi<button class="vsc-refresh" id="git-age" aria-label="GitHub son güncelleme"></button></header>
+      <div class="vsc-body" id="git-body"></div>
+    </article>
+
+    <article class="win term devwin" id="w-cmds">
+      <header class="titlebar term-tb" id="cmd-tabs"></header>
+      <div class="cmd-body" id="cmd-body"></div>
+    </article>
+
+    <article class="win rmon devwin" id="w-ports">
+      <header class="titlebar rmon-tb"><span class="tb-icon tm-logo"></span>Kaynak İzleyicisi
+        <span class="seg" id="rm-seg"><button data-v="ports" class="on">Portlar</button><button data-v="procs">Süreçler</button></span>
+        <label class="rm-dev"><input type="checkbox" id="rm-devonly" checked> Sadece geliştirme</label>
+      </header>
+      <div class="rmon-body" id="rm-body"></div>
+    </article>
+
+    <article class="win clipw devwin" id="w-clip">
+      <header class="titlebar clip-tb"><span class="tb-icon clip-logo"></span>Pano
+        <span class="seg" id="cp-seg"><button data-v="history" class="on">Geçmiş</button><button data-v="snippets">Snippet'ler</button></span>
+      </header>
+      <div class="clip-body" id="cp-body"></div>
+      <form class="clip-send" id="cp-send"><textarea id="cp-text" rows="1" placeholder="PC panosuna gönder…"></textarea><button type="submit">Gönder</button></form>
+    </article>
+
+    <article class="win toolsw devwin" id="w-tools">
+      <header class="titlebar tools-tb"><span class="tb-icon tools-logo"></span>Dev Araçları</header>
+      <div class="tools-nav" id="tl-nav"></div>
+      <div class="tools-body" id="tl-body"></div>
+    </article>
+  </main>
+
+  <!-- Görev çubuğu -->
+  <footer class="taskbar">
+    <div class="tb-left">
+      <button class="tb-start" id="b-start" aria-label="Başlat: modlar ve güç"></button>
+      <button class="tb-weather" id="tb-weather" hidden aria-label="Hava durumu"></button>
+      <button class="tb-chip claude-chip" id="tb-claude" hidden></button>
+      <button class="tb-chip dc-chip" id="tb-dc" hidden></button>
+      <span class="conn" id="conn"><i></i><b id="conn-text">Bağlanıyor…</b></span>
+    </div>
+    <div class="tb-mid" id="mini-player" hidden>
+      <img id="mp-art" alt="">
+      <div class="mp-tx"><b id="mp-title"></b><span id="mp-artist"></span></div>
+      <button class="tb-btn" id="mp-prev" aria-label="Önceki"></button>
+      <button class="tb-btn mp-play" id="mp-play" aria-label="Oynat/Duraklat"></button>
+      <button class="tb-btn" id="mp-next" aria-label="Sonraki"></button>
+    </div>
+    <div class="tb-right">
+      <button class="tb-btn" id="b-mic" aria-label="Discord mikrofon" hidden></button>
+      <button class="tb-btn" id="b-lock" aria-label="Bekleme ekranı"></button>
+      <button class="tb-btn" id="b-full" aria-label="Tam ekran"></button>
+      <div class="clock"><b id="clock-time">--:--</b><span id="clock-date"></span></div>
+    </div>
+  </footer>
+</div>
+
+<!-- Başlat menüsü: modlar + güç -->
+<div id="start-menu" hidden>
+  <div class="sm-title">Mod</div>
+  <div class="sm-modes" id="sm-modes"></div>
+  <div class="sm-auto">
+    <label><input type="checkbox" id="sm-autogame"> Oyun açılınca Oyun moduna geç</label>
+    <label><input type="checkbox" id="sm-autonight"> <span id="sm-nightlbl">Gece saatlerinde Gece moduna geç</span></label>
+  </div>
+  <div class="sm-foot">
+    <div class="sm-user" id="sm-user"></div>
+    <div class="sm-power" id="sm-power"></div>
+  </div>
+</div>
+
+<!-- Hava durumu paneli (Windows 11 widget gibi) -->
+<div id="wx-fly" hidden></div>
+
+<!-- Bekleme ekranı (Windows kilit ekranı gibi) -->
+<div id="idle" hidden>
+  <div id="idle-bg"></div>
+  <div class="idle-content" id="idle-content">
+    <div class="idle-time" id="idle-time">--:--</div>
+    <div class="idle-date" id="idle-date"></div>
+    <div class="idle-bottom">
+      <div class="idle-wx" id="idle-wx"></div>
+      <div class="idle-np" id="idle-np" hidden>
+        <img id="idle-art" alt="">
+        <div class="np-tx"><b id="idle-title"></b><span id="idle-artist"></span></div>
+        <button class="np-btn" id="idle-play" aria-label="Oynat/Duraklat"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="offline" hidden>
+  <div class="off-card">
+    <div class="off-spin"></div>
+    <h2>PC'ye bağlanılamıyor</h2>
+    <p>Yeniden deneniyor… Bağlanmazsa:</p>
+    <ul>
+      <li>PC açık ve MiniDesktop çalışıyor mu?</li>
+      <li>Tablet PC ile <b>aynı Wi-Fi</b> ağında mı?</li>
+      <li>PC'nin ağ adresi değişmiş olabilir. PC'de açılan MiniDesktop sayfasındaki <b>QR kodu yeniden okut</b>.</li>
+    </ul>
+    <p class="off-addr">Denenen adres: <code id="off-host"></code></p>
+  </div>
+</div>
+<div id="toast" role="status"></div>
+<script src="app.js"></script>
+<script src="modes.js"></script>
+<script src="dev.js"></script>
+</body>
+</html>
