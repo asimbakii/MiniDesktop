@@ -8,6 +8,7 @@ from winrt.windows.media.control import (
     GlobalSystemMediaTransportControlsSessionPlaybackStatus as Status,
 )
 from winrt.windows.storage.streams import Buffer, InputStreamOptions
+from i18n import t
 
 APP_NAMES = {
     "chrome": "Chrome",
@@ -26,7 +27,7 @@ def app_label(aumid: str) -> str:
     low = aumid.lower()
     for key, label in APP_NAMES.items():
         if key in low:
-            return label
+            return t(label)
     name = aumid.split("!")[-1]
     return name[:-4] if name.lower().endswith(".exe") else name
 

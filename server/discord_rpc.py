@@ -15,6 +15,7 @@ import uuid
 from pathlib import Path
 
 from keys import KeyControl
+from i18n import t
 
 SCOPES_BASE = ["rpc", "rpc.voice.read", "rpc.voice.write"]
 SCOPE_NOTIF = "rpc.notifications.read"
@@ -143,7 +144,7 @@ class DiscordRPC:
             if self.keys.cfg["enabled"] and action in ("toggle_mute", "toggle_deaf"):
                 await asyncio.to_thread(self.keys.toggle, "mute" if action == "toggle_mute" else "deaf")
                 return
-            raise RPCError("Discord bağlı değil.")
+            raise RPCError(t("Discord bağlı değil."))
         if action == "toggle_mute":
             self._apply_voice(await self.cmd("SET_VOICE_SETTINGS", {"mute": not self.voice["mute"]}))
         elif action == "toggle_deaf":
@@ -204,11 +205,11 @@ class DiscordRPC:
         loop = asyncio.get_running_loop()
         for i in range(10):
             try:
-                t, _ = await loop.create_pipe_connection(lambda: _Proto(self), rf"\\.\pipe\discord-ipc-{i}")
-                return t
+                transport, _ = await loop.create_pipe_connection(lambda: _Proto(self), rf"\\.\pipe\discord-ipc-{i}")
+                return transport
             except OSError:
                 continue
-        raise FileNotFoundError("Discord açık değil")
+        raise FileNotFoundError(t("Discord açık değil"))
 
     async def _auth(self):
         tok = self.cfg.get("access_token")
@@ -279,7 +280,7 @@ class DiscordRPC:
                 guild_name = (await self.cmd("GET_GUILD", {"guild_id": ch["guild_id"]})).get("name")
             except Exception:
                 pass
-        self.channel = {"id": ch["id"], "name": ch.get("name") or "Özel arama", "guild": guild_name}
+        self.channel = {"id": ch["id"], "name": ch.get("name") or t("Özel arama"), "guild": guild_name}
         for vs in ch.get("voice_states") or []:
             self._upsert_member(vs)
         for evt in CHANNEL_EVENTS:
@@ -292,7 +293,7 @@ class DiscordRPC:
     # ---------- protokol ----------
     async def cmd(self, cmd, args=None, evt=None, timeout=10):
         if not self._t:
-            raise RPCError("Discord bağlı değil.")
+            raise RPCError(t("Discord bağlı değil."))
         nonce = str(uuid.uuid4())
         fut = asyncio.get_running_loop().create_future()
         self._pending[nonce] = fut
@@ -306,7 +307,7 @@ class DiscordRPC:
             self._pending.pop(nonce, None)
         if resp.get("evt") == "ERROR":
             d = resp.get("data") or {}
-            raise RPCError(f"{d.get('message', 'Discord hatası')} ({d.get('code')})")
+            raise RPCError(f"{d.get('message') or t('Discord hatası')} ({d.get('code')})")
         return resp.get("data")
 
     def _send(self, op, payload):
@@ -334,7 +335,7 @@ class DiscordRPC:
                     fut.set_result(data)
 
     def _on_lost(self):
-        err = ConnectionError(self._close_msg or "Discord bağlantısı kapandı")
+        err = ConnectionError(self._close_msg or t("Discord bağlantısı kapandı"))
         for fut in list(self._pending.values()):
             if not fut.done():
                 fut.set_exception(err)
@@ -429,4 +430,4 @@ def _post_token(form: dict) -> dict:
             return json.load(r)
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", "replace")[:300]
-        raise RPCError(f"Discord token alınamadı ({e.code}): {body}")
+        raise RPCError(t("Discord token alınamadı ({code}): {body}", code=e.code, body=body))

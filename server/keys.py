@@ -8,6 +8,7 @@ import ctypes.wintypes as wt
 import json
 import time
 from pathlib import Path
+from i18n import t
 
 DEFAULTS = {"enabled": True, "mute": "ctrl+shift+f9", "deaf": "ctrl+shift+f10"}
 
@@ -50,10 +51,10 @@ def parse(combo: str) -> list[int]:
         if not part:
             continue
         if part not in VK:
-            raise ValueError(f"Bilinmeyen tuş: {part}")
+            raise ValueError(t("Bilinmeyen tuş: {part}", part=part))
         keys.append(VK[part])
     if not keys:
-        raise ValueError("Kısayol boş")
+        raise ValueError(t("Kısayol boş"))
     return keys
 
 

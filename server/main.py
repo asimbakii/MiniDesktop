@@ -16,7 +16,7 @@ import qrcode
 import qrcode.image.svg
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from audio import Audio
@@ -32,6 +32,8 @@ from stats import Stats
 from weather import Weather
 
 from paths import ADMIN_HTML, APP_DIR as ROOT, BRIDGE_EXE, DATA_DIR as DATA, PORT, WEB_DIR as WEB
+import i18n
+from i18n import t
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 pairing = Pairing(DATA)
@@ -64,6 +66,7 @@ clipboard = Clipboard(devcfg, dev_active, on_change=request_push)
 def live_state() -> dict:
     """Olay güdümlü modüllerin güncel durumu (her gönderimde yeniden okunur)."""
     out = {
+        "lang": i18n.lang(),
         "discord": discord.state(),
         "social": social.state(),
         "weather": weather.state(),
@@ -107,7 +110,7 @@ async def ip_watch_loop():
 
 def require_local(request: Request):
     if request.client is None or request.client.host not in ("127.0.0.1", "::1"):
-        raise HTTPException(403, "Bu sayfa sadece PC'den açılabilir.")
+        raise HTTPException(403, t("Bu sayfa sadece PC'den açılabilir."))
 
 
 # ---------------- arka plan döngüleri ----------------
@@ -233,7 +236,7 @@ async def ws_endpoint(ws: WebSocket, token: str = ""):
                         sysmon.open_port(int(msg.get("value")))
                     elif action == "kill":
                         n = await asyncio.to_thread(sysmon.kill, list(msg.get("value") or []))
-                        await ws.send_text(json.dumps({"type": "toast", "message": f"{n} süreç sonlandırıldı"}, ensure_ascii=False))
+                        await ws.send_text(json.dumps({"type": "toast", "message": t("{n} süreç sonlandırıldı", n=n)}, ensure_ascii=False))
                 elif target == "clip":
                     if action == "set":
                         await clipboard.set(msg.get("value") or "")
@@ -247,7 +250,7 @@ async def ws_endpoint(ws: WebSocket, token: str = ""):
                         text = await asyncio.to_thread(clipboard_get)
                         await ws.send_text(json.dumps({"type": "clip_text", "text": text or "", "req": msg.get("value")}, ensure_ascii=False))
                     if action not in ("clear", "get"):
-                        await ws.send_text(json.dumps({"type": "toast", "message": "PC panosuna kopyalandı"}, ensure_ascii=False))
+                        await ws.send_text(json.dumps({"type": "toast", "message": t("PC panosuna kopyalandı")}, ensure_ascii=False))
                 request_push()
             except Exception as e:
                 await ws.send_text(json.dumps({"type": "error", "message": str(e)}, ensure_ascii=False))
@@ -261,7 +264,9 @@ async def ws_endpoint(ws: WebSocket, token: str = ""):
 @app.get("/admin")
 async def admin_page(request: Request):
     require_local(request)
-    return FileResponse(ADMIN_HTML)
+    lang = i18n.lang()
+    html = ADMIN_HTML.read_text("utf-8").replace('<html lang="tr">', f'<html lang="{lang}" data-lang="{lang}">', 1)
+    return HTMLResponse(html)
 
 
 @app.get("/api/admin/info")
@@ -273,6 +278,8 @@ async def admin_info(request: Request, ip: str = ""):
     url = pair_url(ip)
     svg = qrcode.make(url, image_factory=qrcode.image.svg.SvgPathImage, border=2).to_string(encoding="unicode")
     return {
+        "lang": i18n.lang(),
+        "lang_setting": i18n.setting(),
         "url": url,
         "base": base_url(ip),
         "ip": ip,
@@ -301,7 +308,7 @@ async def admin_info(request: Request, ip: str = ""):
             "me": social.me,
             "friends": len(social.friends),
         },
-        "weather": {"label": weather.cfg.get("label"), "error": weather.error, "temp": (weather.data or {}).get("temp"), "desc": (weather.data or {}).get("desc")},
+        "weather": {"label": weather.cfg.get("label"), "error": weather.error, "temp": (weather.data or {}).get("temp"), "desc": weather.state().get("desc")},
         "modes": modes.state(),
         "claude": {"installed": claude.hook_installed(), "current": claude.hook_current(), "command": claude.hook_command(), "sessions": len(claude.sessions)},
         "devcfg": devcfg.data,
@@ -315,7 +322,7 @@ async def admin_discord(request: Request):
     require_local(request)
     body = await request.json()
     if not body.get("client_id") or not body.get("client_secret"):
-        raise HTTPException(400, "Client ID ve Client Secret gerekli.")
+        raise HTTPException(400, t("Client ID ve Client Secret gerekli."))
     discord.set_credentials(body["client_id"], body["client_secret"])
     return {"ok": True}
 
@@ -348,7 +355,7 @@ async def admin_social(request: Request):
     body = await request.json()
     app_id = str(body.get("app_id", "")).strip()
     if not app_id.isdigit():
-        raise HTTPException(400, "Application ID sadece rakamlardan oluşmalı.")
+        raise HTTPException(400, t("Application ID sadece rakamlardan oluşmalı."))
     social.set_app_id(app_id)
     return {"ok": True}
 
@@ -359,7 +366,7 @@ async def admin_social_connect(request: Request):
     body = await request.json() if (await request.body()) else {}
     app_id = body.get("app_id")
     if app_id is not None and str(app_id).strip() and not str(app_id).strip().isdigit():
-        raise HTTPException(400, "Application ID sadece rakamlardan oluşmalı.")
+        raise HTTPException(400, t("Application ID sadece rakamlardan oluşmalı."))
     social.connect(None if app_id is None else str(app_id))
     return {"ok": True}
 
@@ -384,13 +391,13 @@ async def admin_weather(request: Request):
     body = await request.json()
     city = str(body.get("city", "")).strip()
     if not city:
-        raise HTTPException(400, "Şehir adı gir.")
+        raise HTTPException(400, t("Şehir adı gir."))
     try:
         cfg = await asyncio.to_thread(weather.set_city, city)
     except ValueError as e:
         raise HTTPException(404, str(e))
     except Exception as e:
-        raise HTTPException(502, f"Open-Meteo'ya ulaşılamadı: {e}")
+        raise HTTPException(502, t("Open-Meteo'ya ulaşılamadı: {e}", e=e))
     return {"ok": True, "label": cfg["label"]}
 
 
@@ -432,8 +439,20 @@ async def admin_modes(request: Request):
     try:
         modes.update_settings(await request.json())
     except Exception as e:
-        raise HTTPException(400, f"Geçersiz ayar: {e}")
+        raise HTTPException(400, t("Geçersiz ayar: {e}", e=e))
     return {"ok": True}
+
+
+@app.post("/api/admin/lang")
+async def admin_lang(request: Request):
+    require_local(request)
+    body = await request.json()
+    try:
+        i18n.set_lang(str(body.get("lang", "auto")))
+    except ValueError:
+        raise HTTPException(400, "lang: auto | tr | en")
+    request_push()  # tabletler yeni dile geçsin
+    return {"ok": True, "lang": i18n.lang()}
 
 
 @app.post("/api/admin/revoke")

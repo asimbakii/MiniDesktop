@@ -8,6 +8,7 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from i18n import t
 
 UA = {"User-Agent": "MiniDesktop/1.0"}
 REFRESH = 15 * 60
@@ -57,7 +58,7 @@ class Weather:
         q = urllib.parse.urlencode({"name": name.strip(), "count": 1, "language": "tr", "format": "json"})
         res = _get(f"https://geocoding-api.open-meteo.com/v1/search?{q}").get("results") or []
         if not res:
-            raise ValueError(f"'{name}' bulunamadı. Şehir adını farklı yazmayı dene.")
+            raise ValueError(t("'{name}' bulunamadı. Şehir adını farklı yazmayı dene.", name=name))
         r = res[0]
         # örn. "Kadıköy, İstanbul" ya da sadece "İstanbul"
         label = ", ".join(x for x in (r.get("name"), r.get("admin1") if r.get("admin1") != r.get("name") else None) if x)
@@ -89,6 +90,7 @@ class Weather:
                 "min": dd["temperature_2m_min"][i],
                 "rain": (dd.get("precipitation_probability_max") or [None] * 4)[i],
                 "desc": ddesc,
+                "code": dd["weather_code"][i],
                 "icon": dic,
             })
         return {
@@ -98,6 +100,7 @@ class Weather:
             "wind": cur.get("wind_speed_10m"),
             "is_day": bool(cur.get("is_day", 1)),
             "desc": desc,
+            "code": cur["weather_code"],
             "icon": ic,
             "days": days,
             "updated": time.time(),
@@ -111,7 +114,7 @@ class Weather:
                     self.data = await asyncio.to_thread(self._fetch)
                     self.error = None
                 except Exception as e:
-                    self.error = f"Hava durumu alınamadı: {e}"
+                    self.error = t("Hava durumu alınamadı: {e}", e=e)
                 self.on_change()
             try:
                 await asyncio.wait_for(self._wake.wait(), REFRESH if self.configured() else 3600)
@@ -120,10 +123,16 @@ class Weather:
             self._wake.clear()
 
     def state(self) -> dict:
+        data = dict(self.data or {})
+        # Açıklamaları seçili dile göre her gönderimde yeniden üret
+        if "code" in data:
+            data["desc"] = t(describe(data["code"])[0])
+        if data.get("days"):
+            data["days"] = [dict(d, desc=t(describe(d["code"])[0])) if "code" in d else d for d in data["days"]]
         return {
             "configured": self.configured(),
             "city": self.cfg.get("city"),
             "label": self.cfg.get("label"),
             "error": self.error,
-            **(self.data or {}),
+            **data,
         }

@@ -9,6 +9,7 @@ import os
 import subprocess
 import time
 from pathlib import Path
+from i18n import t
 
 # MiniDesktop'un paylaşılan Discord uygulaması ("MiniDesktop Sosyal", Public Client).
 # Kullanıcılar kendi uygulamalarını açmadan sadece Discord'da izin vererek bağlanır.
@@ -156,7 +157,7 @@ class Social:
                 creationflags=subprocess.CREATE_NO_WINDOW,
             )
         except Exception as e:
-            self._set("error", f"Köprü başlatılamadı: {e}")
+            self._set("error", t("Köprü başlatılamadı: {e}", e=e))
             return
         try:
             while True:
@@ -172,7 +173,7 @@ class Social:
             self.proc = None
             self.friends = {}
             if self.status != "error":
-                self._set("error" if code else "stopped", f"Köprü kapandı (kod {code})" if code else None)
+                self._set("error" if code else "stopped", t("Köprü kapandı (kod {code})", code=code) if code else None)
 
     def _on_event(self, ev: dict):
         t = ev.get("t")

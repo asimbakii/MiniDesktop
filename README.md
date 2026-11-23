@@ -94,7 +94,9 @@ A Windows-style **lock screen** with clock, weather and now playing; a dimmed re
 </table>
 
 > [!NOTE]
-> The installer is not code-signed yet, so Windows SmartScreen may warn you: click **More info → Run anyway**. The user interface is currently in **Turkish**; translations are very welcome (see [Contributing](CONTRIBUTING.md)).
+> The installer is not code-signed yet, so Windows SmartScreen may warn you: click **More info → Run anyway**.
+
+🌍 **Languages:** English and Turkish. MiniDesktop follows your Windows display language automatically; change it any time in the admin panel (*Language / Dil*). The tablet, admin panel and tray app switch together. [Add your language](CONTRIBUTING.md#adding-a-language) — it is a single dictionary per component.
 
 The window closes / minimizes to the **system tray** (hidden icons) and keeps running. Right-click the tray icon to open the admin panel, copy the tablet address, stop/start the server or quit. *Start with Windows* is a checkbox in the window and in the installer.
 
@@ -143,6 +145,7 @@ Portrait and landscape are both supported; the layout stacks into a single colum
 - **Performance** gauges: CPU load &amp; temperature, GPU load / temperature / VRAM / power (NVIDIA), RAM, network throughput.
 - **Volume mixer** styled like Windows 11: master volume and every app separately.
 - **Taskbar** with weather (Open-Meteo, no API key), clock, full-screen button and a Windows 11-style weather flyout with a 4-day forecast.
+- **English and Turkish UI**, chosen automatically from your Windows language (switch in the admin panel).
 </details>
 
 <details>
@@ -276,7 +279,7 @@ Add the keybinds in Discord (*User Settings → Keybinds*) exactly as shown in t
 
 ## 🤝 Contributing
 
-Issues and pull requests are welcome — especially **translations (English UI)**, new tablet widgets and support for more GPUs. See [CONTRIBUTING.md](CONTRIBUTING.md). If MiniDesktop is useful to you, a ⭐ helps other people find it.
+Issues and pull requests are welcome — especially **new languages**, new tablet widgets and support for more GPUs. See [CONTRIBUTING.md](CONTRIBUTING.md). If MiniDesktop is useful to you, a ⭐ helps other people find it.
 
 ## 📄 License
 

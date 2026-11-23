@@ -13,6 +13,7 @@ import webbrowser
 from pathlib import Path
 
 import psutil
+from i18n import t
 
 NO_WINDOW = subprocess.CREATE_NO_WINDOW
 ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*\x07")
@@ -34,7 +35,7 @@ class DevConfig:
         repos = [str(Path(r.strip())) for r in data.get("repos", []) if str(r).strip()]
         for r in repos:
             if not Path(r).is_dir():
-                raise ValueError(f"Klasör bulunamadı: {r}")
+                raise ValueError(t("Klasör bulunamadı: {r}", r=r))
         cmds = []
         for c in data.get("commands", []):
             name, cmd = str(c.get("name", "")).strip(), str(c.get("cmd", "")).strip()
@@ -42,7 +43,7 @@ class DevConfig:
                 continue
             cwd = str(c.get("cwd", "")).strip()
             if cwd and not Path(cwd).is_dir():
-                raise ValueError(f"Komut klasörü bulunamadı: {cwd}")
+                raise ValueError(t("Komut klasörü bulunamadı: {cwd}", cwd=cwd))
             cmds.append({"id": c.get("id") or secrets.token_hex(4), "name": name[:40], "cmd": cmd, "cwd": cwd})
         snips = []
         for s in data.get("snippets", []):
@@ -184,13 +185,13 @@ class GitWatch:
 
     def open_repo(self, path: str):
         if path not in [r["path"] for r in self.repos]:
-            raise ValueError("Bilinmeyen repo")
+            raise ValueError(t("Bilinmeyen repo"))
         subprocess.Popen(f'code "{path}"', shell=True, creationflags=NO_WINDOW)
 
     def open_url(self, url: str):
         known = {p["url"] for p in self.gh["review"] + self.gh["mine"]} | {c["url"] for c in self.gh["ci"].values()}
         if url not in known or not url.startswith("https://github.com/"):
-            raise ValueError("Bilinmeyen bağlantı")
+            raise ValueError(t("Bilinmeyen bağlantı"))
         webbrowser.open(url)
 
 
@@ -229,7 +230,7 @@ class Commands:
     async def start(self, cid: str):
         c = self.cfg.command(cid)
         if not c:
-            raise ValueError("Bilinmeyen komut")
+            raise ValueError(t("Bilinmeyen komut"))
         run = self.runs.get(cid)
         if run and run["status"] == "running":
             return
@@ -258,7 +259,7 @@ class Commands:
                 self.on_change()
         code = await proc.wait()
         run.update(status="ok" if code == 0 else ("stopped" if run.get("stopping") else "fail"), code=code, ended=time.time(), proc=None)
-        run["lines"].append(f"[çıkış kodu {code}]")
+        run["lines"].append(t("[çıkış kodu {code}]", code=code))
         self.on_change()
 
     async def stop(self, cid: str):
@@ -394,7 +395,7 @@ class SysMon:
 
     def open_port(self, port: int):
         if port not in {p["port"] for p in self.ports}:
-            raise ValueError("Bilinmeyen port")
+            raise ValueError(t("Bilinmeyen port"))
         webbrowser.open(f"http://localhost:{port}")
 
     def kill(self, pids: list[int]):
@@ -484,7 +485,7 @@ def clipboard_get() -> str | None:
 def clipboard_set(text: str):
     data = (text + "\0").encode("utf-16-le")
     if not _open_clipboard():
-        raise RuntimeError("Pano şu an kullanımda, tekrar dene.")
+        raise RuntimeError(t("Pano şu an kullanımda, tekrar dene."))
     try:
         user32.EmptyClipboard()
         h = kernel32.GlobalAlloc(GMEM_MOVEABLE, len(data))
@@ -492,7 +493,7 @@ def clipboard_set(text: str):
         ctypes.memmove(p, data, len(data))
         kernel32.GlobalUnlock(h)
         if not user32.SetClipboardData(CF_UNICODETEXT, h):
-            raise RuntimeError("Panoya yazılamadı.")
+            raise RuntimeError(t("Panoya yazılamadı."))
     finally:
         user32.CloseClipboard()
 
@@ -533,7 +534,7 @@ class Clipboard:
     async def copy_snippet(self, sid: str):
         s = self.cfg.snippet(sid)
         if not s:
-            raise ValueError("Bilinmeyen snippet")
+            raise ValueError(t("Bilinmeyen snippet"))
         await self.set(s["text"])
 
     def clear(self):

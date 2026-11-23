@@ -13,16 +13,16 @@ Object.assign(ICONS, {
 });
 
 const MODE_INFO = {
-  normal: { name: "Normal", desc: "Müzik, Discord, performans, ses", icon: "monitor" },
-  dev: { name: "Geliştirici", desc: "Claude Code, git, komutlar, araçlar", icon: "code" },
-  game: { name: "Oyun", desc: "Büyük performans, Discord sesi", icon: "gamepad" },
-  night: { name: "Gece", desc: "Karartılmış ekran, kırmızı saat", icon: "moon" },
+  normal: { name: t("Normal"), desc: t("Müzik, Discord, performans, ses"), icon: "monitor" },
+  dev: { name: t("Geliştirici"), desc: t("Claude Code, git, komutlar, araçlar"), icon: "code" },
+  game: { name: t("Oyun"), desc: t("Büyük performans, Discord sesi"), icon: "gamepad" },
+  night: { name: t("Gece"), desc: t("Karartılmış ekran, kırmızı saat"), icon: "moon" },
 };
 const POWER = [
-  { k: "lock", name: "Kilitle", icon: "lock" },
-  { k: "sleep", name: "Uyku", icon: "moon" },
-  { k: "restart", name: "Yeniden başlat", icon: "restart" },
-  { k: "shutdown", name: "Kapat", icon: "power" },
+  { k: "lock", name: t("Kilitle"), icon: "lock" },
+  { k: "sleep", name: t("Uyku"), icon: "moon" },
+  { k: "restart", name: t("Yeniden başlat"), icon: "restart" },
+  { k: "shutdown", name: t("Kapat"), icon: "power" },
 ];
 
 $("#b-start").innerHTML = icon("start");
@@ -40,6 +40,7 @@ function buildStartMenu() {
     const b = el("button", "sm-mode");
     b.dataset.k = k;
     b.innerHTML = `<span class="ic">${icon(m.icon)}</span><b></b><span class="d"></span>`;
+    b.querySelector("b").dataset.auto = t("otomatik");
     b.querySelector("b").textContent = m.name;
     b.querySelector(".d").textContent = m.desc;
     b.onclick = () => { send("mode", "set", { value: k }); closeStart(); };
@@ -65,13 +66,13 @@ function armPower(b, p) {
   if (b.classList.contains("armed")) {
     b.classList.remove("armed");
     send("power", p.k);
-    toast(`${p.name}: komut gönderildi`);
+    toast(t("{name}: komut gönderildi", { name: p.name }));
     closeStart();
     return;
   }
   for (const x of document.querySelectorAll(".sm-pw.armed")) x.classList.remove("armed"), (x.querySelector("span").textContent = POWER.find((q) => q.k === x.dataset.k).name);
   b.classList.add("armed");
-  b.querySelector("span").textContent = "Emin misin?";
+  b.querySelector("span").textContent = t("Emin misin?");
   setTimeout(() => { b.classList.remove("armed"); b.querySelector("span").textContent = p.name; }, 3000);
 }
 function closeStart() {
@@ -107,7 +108,7 @@ function renderMode(st) {
     }
     $("#sm-autogame").checked = !!m.auto_game;
     $("#sm-autonight").checked = !!m.auto_night;
-    $("#sm-nightlbl").textContent = `Gece saatlerinde (${m.night_from}–${m.night_to}) Gece moduna geç`;
+    $("#sm-nightlbl").textContent = t("Gece saatlerinde ({from}–{to}) Gece moduna geç", { from: m.night_from, to: m.night_to });
   }
   // Oyun bandı
   const gb = $("#game-banner");
@@ -115,12 +116,12 @@ function renderMode(st) {
   if (m.mode === "game") {
     if (m.game) {
       const mins = Math.max(0, Math.floor((Date.now() / 1000 - m.game.since) / 60));
-      const dur = mins >= 60 ? `${Math.floor(mins / 60)} sa ${mins % 60} dk` : `${mins} dk`;
+      const dur = mins >= 60 ? t("{h} sa {m} dk", { h: Math.floor(mins / 60), m: mins % 60 }) : t("{n} dk", { n: mins });
       gb.innerHTML = `${icon("gamepad")}<b></b><span></span>`;
       gb.querySelector("b").textContent = m.game.name;
       gb.querySelector("span").textContent = dur;
     } else {
-      gb.innerHTML = `${icon("gamepad")}<span>Oyun algılanmadı</span>`;
+      gb.innerHTML = `${icon("gamepad")}<span>${t("Oyun algılanmadı")}</span>`;
     }
   }
 }
@@ -175,7 +176,7 @@ function renderChips(st) {
   cc.hidden = mode === "dev" || !waiting.length;
   if (!cc.hidden) {
     const s = waiting[0];
-    cc.textContent = `Claude · ${s.state === "permission" ? "İzin bekliyor" : "Cevap bekliyor"}${s.project ? " · " + s.project : ""}${waiting.length > 1 ? ` (+${waiting.length - 1})` : ""}`;
+    cc.textContent = `Claude · ${s.state === "permission" ? t("İzin bekliyor") : t("Cevap bekliyor")}${s.project ? " · " + s.project : ""}${waiting.length > 1 ? ` (+${waiting.length - 1})` : ""}`;
     cc.onclick = () => send("mode", "set", { value: "dev" });
   }
   // Discord okunmamış: Discord penceresinin görünmediği geliştirici modunda
@@ -197,7 +198,7 @@ function renderChips(st) {
     const known = d.control === "rpc";
     mic.innerHTML = known && d.mute ? icon("mic", "slash") : icon("mic");
     mic.classList.toggle("muted", known && !!d.mute);
-    mic.title = known ? "" : "Kısayol modu: Discord'da Sessize Al tuş ataması gönderilir";
+    mic.title = known ? "" : t("Kısayol modu: Discord'da Sessize Al tuş ataması gönderilir");
   }
 }
 

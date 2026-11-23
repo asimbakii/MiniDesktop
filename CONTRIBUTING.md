@@ -3,10 +3,21 @@
 Thanks for helping! Issues and pull requests are welcome.
 
 ## Good first contributions
-- **Translations:** the tablet UI (`web/`), the admin panel (`server/admin.html`) and the tray app (`app/control.py`) are currently in Turkish. An English UI (and a simple language switch) would help the most.
+- **New languages** (see below). English and Turkish are included.
 - **New widgets / modes** for the tablet.
 - **Hardware support:** AMD/Intel GPU stats, more game launchers in game detection (`server/modes.py`).
 - Testing on **iPad** and **HarmonyOS** tablets and reporting what works.
+
+## Adding a language
+Texts are written in Turkish in the code and wrapped in `t("…")`; each language is a dictionary from the Turkish text to the translation:
+
+| Component | Dictionary |
+|---|---|
+| Tablet web app | `I18N_EN` / `I18N_EN_HTML` in `web/i18n.js` |
+| Admin panel | `EN` / `EN_HTML` in the `<script>` of `server/admin.html` |
+| Server + tray app | `EN` in `server/i18n.py` |
+
+To add a language, add a dictionary next to the English one, extend the language lists (`LANGS` in `server/i18n.py`, the `<select>` in the admin panel) and pick the dictionary by language code in the three `t()` functions. Keep `{placeholders}` unchanged.
 
 ## Development setup
 ```powershell

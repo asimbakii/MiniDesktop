@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 import paths
+from i18n import EN, t
 
 HOOK_EVENTS = ("SessionStart", "UserPromptSubmit", "PreToolUse", "Notification", "Stop", "SessionEnd")
 MATCHER_EVENTS = ("PreToolUse",)
@@ -34,6 +35,13 @@ def _tool_label(ev: dict) -> str:
     if inp.get("description"):
         return f"{name}: {str(inp['description'])[:60]}"
     return name
+
+
+def _tr_detail(d: str) -> str:
+    """Durum metinleri Türkçe saklanır; gönderirken seçili dile çevrilir."""
+    if d.startswith("İzin bekliyor:"):
+        return t("İzin bekliyor:") + d[len("İzin bekliyor:"):]
+    return t(d) if d in EN else d
 
 
 class ClaudeSessions:
@@ -98,6 +106,7 @@ class ClaudeSessions:
             del self.sessions[sid]
         order = {"permission": 0, "waiting": 1, "working": 2, "done": 3, "idle": 4}
         items = sorted(self.sessions.values(), key=lambda s: (order.get(s["state"], 5), -s.get("updated", 0)))
+        items = [dict(s, detail=_tr_detail(s.get("detail", ""))) for s in items]
         return {"installed": self.hook_installed(), "sessions": items}
 
     # ---------- kurulum ----------

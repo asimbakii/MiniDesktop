@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 import psutil
+from i18n import t
 
 MODES = ("normal", "dev", "game", "night")
 
@@ -121,7 +122,7 @@ class Modes:
     # ---------- tabletten ----------
     def set_mode(self, mode: str):
         if mode not in MODES:
-            raise ValueError("Bilinmeyen mod")
+            raise ValueError(t("Bilinmeyen mod"))
         # Otomatik moddan elle çıkılıyorsa o durumu bastır
         if self._auto_kind == "game" and mode != "game" and self.game:
             self._suppress_game = self.game["exe"]
@@ -206,4 +207,4 @@ def power(action: str):
     elif action == "shutdown":
         subprocess.Popen(["shutdown", "/s", "/t", "3"], creationflags=flags)
     else:
-        raise ValueError("Bilinmeyen güç işlemi")
+        raise ValueError(t("Bilinmeyen güç işlemi"))

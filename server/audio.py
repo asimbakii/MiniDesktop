@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 sys.coinit_flags = 0  # COINIT_MULTITHREADED
 import comtypes  # noqa: E402
 from pycaw.pycaw import AudioUtilities
+from i18n import t
 
 PRETTY = {
     "chrome.exe": "Chrome",
@@ -24,6 +25,8 @@ PRETTY = {
 
 
 def _pretty(key: str) -> str:
+    if key == "__system__":
+        return t("Sistem sesleri")
     if key in PRETTY:
         return PRETTY[key]
     name = key[:-4] if key.endswith(".exe") else key

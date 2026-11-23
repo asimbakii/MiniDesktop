@@ -4,6 +4,7 @@ import json
 import secrets
 import time
 from pathlib import Path
+from i18n import t
 
 
 def device_id(token: str) -> str:
@@ -28,13 +29,13 @@ class Pairing:
     def pair(self, pin: str, name: str) -> str:
         now = time.time()
         if now < self._locked_until:
-            raise PermissionError("Çok fazla hatalı deneme. 1 dakika bekleyip tekrar dene.")
+            raise PermissionError(t("Çok fazla hatalı deneme. 1 dakika bekleyip tekrar dene."))
         if not secrets.compare_digest(str(pin).strip(), self.pin):
             self._fails += 1
             if self._fails >= 5:
                 self._fails = 0
                 self._locked_until = now + 60
-            raise PermissionError("PIN yanlış.")
+            raise PermissionError(t("PIN yanlış."))
         self._fails = 0
         token = secrets.token_urlsafe(32)
         self.devices[token] = {"name": (name or "Tablet")[:60], "created": int(now)}

@@ -31,8 +31,8 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
   del(k) { try { localStorage.removeItem(k); } catch {} },
 };
-const nf1 = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
-const nf0 = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+const nf0 = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 });
 const GB = 1024 ** 3;
 function fmtTime(s) {
   s = Math.max(0, Math.floor(s || 0));
@@ -51,14 +51,14 @@ function fmtUptime(s) {
   const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
   return `${d}:${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}`;
 }
-const temp = (t) => (t == null ? "—" : `${nf0.format(t)} °C`);
+const temp = (c) => (c == null ? "—" : `${nf0.format(c)} °C`);
 let toastTimer;
 function toast(msg) {
-  const t = $("#toast");
-  t.textContent = msg;
-  t.classList.add("show");
+  const box = $("#toast");
+  box.textContent = msg;
+  box.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("show"), 3500);
+  toastTimer = setTimeout(() => box.classList.remove("show"), 3500);
 }
 
 /* ================= Bağlantı & eşleme ================= */
@@ -88,7 +88,7 @@ async function pair(pin) {
   try {
     const r = await fetch("/api/pair", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin, name: deviceName() }) });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.detail || "Eşleşme başarısız");
+    if (!r.ok) throw new Error(j.detail || t("Eşleşme başarısız"));
     token = j.token;
     store.set("md_token", token);
     history.replaceState(null, "", "/");
@@ -120,8 +120,8 @@ function setConn(kind, text) {
 function connect() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
   ws = new WebSocket(`${proto}://${location.host}/ws?token=${encodeURIComponent(token)}`);
-  setConn("", "Bağlanıyor…");
-  ws.onopen = () => { retry = 0; setConn("ok", "PC'ye bağlı"); };
+  setConn("", t("Bağlanıyor…"));
+  ws.onopen = () => { retry = 0; setConn("ok", t("PC'ye bağlı")); };
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.type === "state") render(m);
@@ -132,10 +132,10 @@ function connect() {
     if (e.code === 4401) {
       store.del("md_token");
       token = null;
-      showPair("Bu tabletin eşleşmesi kaldırılmış. PC'deki PIN ile tekrar eşle.");
+      showPair(t("Bu tabletin eşleşmesi kaldırılmış. PC'deki PIN ile tekrar eşle."));
       return;
     }
-    setConn("bad", "Bağlantı yok, yeniden deneniyor…");
+    setConn("bad", t("Bağlantı yok, yeniden deneniyor…"));
     setTimeout(connect, Math.min(5000, 400 * 2 ** retry++));
   };
 }
@@ -255,7 +255,7 @@ function renderMusic(m, audio) {
     const box = $("#sources");
     box.replaceChildren();
     if (srcs.length > 1) {
-      const auto = el("button", m.preferred ? "" : "on", "Otomatik");
+      const auto = el("button", m.preferred ? "" : "on", t("Otomatik"));
       auto.onclick = () => send("media", "select_source", { value: null });
       box.append(auto);
       for (const s of srcs) {
@@ -266,8 +266,8 @@ function renderMusic(m, audio) {
     }
   }
 
-  $("#m-title").textContent = m.available ? m.title || "Bilinmeyen parça" : "Şu an bir şey çalmıyor";
-  $("#m-artist").textContent = m.available ? [m.artist, m.album].filter(Boolean).join(" • ") : "YT Music'te bir şarkı başlat";
+  $("#m-title").textContent = m.available ? m.title || t("Bilinmeyen parça") : t("Şu an bir şey çalmıyor");
+  $("#m-artist").textContent = m.available ? [m.artist, m.album].filter(Boolean).join(" • ") : t("YT Music'te bir şarkı başlat");
 
   if (m.art !== M.art) {
     M.art = m.art;
@@ -319,7 +319,7 @@ function makeMixRow(key, master) {
   const val = el("div", "val");
   const line = el("div", "ctl-line");
   const mute = el("button", "mute");
-  mute.setAttribute("aria-label", "Sessize al");
+  mute.setAttribute("aria-label", t("Sessize al"));
   const range = el("input");
   range.type = "range"; range.min = 0; range.max = 100;
   line.append(mute, range);
@@ -350,7 +350,7 @@ let masterRow = null;
 function renderMixer(a) {
   if (!a.master) return;
   if (!masterRow) { masterRow = makeMixRow("__master__", true); $("#mx-master").replaceWith(masterRow.row); }
-  fillMixRow(masterRow, a.master.device || "Hoparlör", a.master.volume, a.master.muted, false, true);
+  fillMixRow(masterRow, a.master.device || t("Hoparlör"), a.master.volume, a.master.muted, false, true);
   const box = $("#mx-apps");
   const keys = (a.apps || []).map((x) => x.key);
   for (const [k, r] of mixRows) if (!keys.includes(k)) { r.row.remove(); mixRows.delete(k); }
@@ -363,7 +363,7 @@ function renderMixer(a) {
 }
 
 /* ================= Discord ================= */
-const STATUS_TR = { online: "Çevrimiçi", idle: "Boşta", dnd: "Rahatsız Etmeyin", streaming: "Yayında", offline: "Çevrimdışı", unknown: "" };
+const STATUS_TR = { online: t("Çevrimiçi"), idle: t("Boşta"), dnd: t("Rahatsız Etmeyin"), streaming: t("Yayında"), offline: t("Çevrimdışı"), unknown: "" };
 let dcSig = "";
 let dcTab = store.get("md_dc_tab") || "online";
 function avatar(src, cls = "av") {
@@ -400,13 +400,13 @@ function dcCat(text, btnText, onBtn) {
   return cat;
 }
 const SOCIAL_MSG = {
-  not_configured: "Arkadaş listesini görmek için PC'deki MiniDesktop penceresinde ya da yönetim panelinde <b>Discord ile bağlan</b>'a bas.",
-  no_bridge: "Bu kurulumda Discord arkadaş köprüsü yok. Kurulum dosyasıyla yüklenen sürümde hazır gelir.",
-  starting: "Bağlanıyor…",
-  connecting: "Bağlanıyor…",
-  authorizing: "PC'de Discord'da açılan pencerede <b>Yetkilendir</b>'e bas.",
-  disconnected: "Bağlantı koptu, yeniden deneniyor…",
-  stopped: "Bağlantı durdu.",
+  not_configured: t("Arkadaş listesini görmek için PC'deki MiniDesktop penceresinde ya da yönetim panelinde <b>Discord ile bağlan</b>'a bas."),
+  no_bridge: t("Bu kurulumda Discord arkadaş köprüsü yok. Kurulum dosyasıyla yüklenen sürümde hazır gelir."),
+  starting: t("Bağlanıyor…"),
+  connecting: t("Bağlanıyor…"),
+  authorizing: t("PC'de Discord'da açılan pencerede <b>Yetkilendir</b>'e bas."),
+  disconnected: t("Bağlantı koptu, yeniden deneniyor…"),
+  stopped: t("Bağlantı durdu."),
 };
 function renderDiscord(d, so) {
   const sig = JSON.stringify([d, so, dcTab]);
@@ -426,8 +426,8 @@ function renderDiscord(d, so) {
 
   // Üst başlık: Arkadaşlar | Çevrimiçi | Tümü
   head.innerHTML = icon("friends");
-  head.append(el("span", "dc-title", "Arkadaşlar"), el("span", "dc-sep"));
-  for (const [key, label] of [["online", "Çevrimiçi"], ["all", "Tümü"]]) {
+  head.append(el("span", "dc-title", t("Arkadaşlar")), el("span", "dc-sep"));
+  for (const [key, label] of [["online", t("Çevrimiçi")], ["all", t("Tümü")]]) {
     const b = el("button", "dc-tab" + (dcTab === key ? " on" : ""), label);
     b.onclick = () => { dcTab = key; store.set("md_dc_tab", key); dcSig = ""; renderDiscord(d, so); };
     head.append(b);
@@ -435,7 +435,7 @@ function renderDiscord(d, so) {
 
   // 1) Ses kanalı (RPC)
   if (rpcReady && d.channel) {
-    body.append(dcCat("Ses kanalı" + (d.channel.guild ? " — " + d.channel.guild : "")));
+    body.append(dcCat(t("Ses kanalı") + (d.channel.guild ? " — " + d.channel.guild : "")));
     const ch = el("div", "dc-channel");
     ch.innerHTML = icon("speaker");
     ch.append(document.createTextNode(d.channel.name));
@@ -452,13 +452,13 @@ function renderDiscord(d, so) {
 
   // 2) Direkt mesajlar (Social SDK)
   const unread = so.unread || [];
-  body.append(dcCat("Direkt mesajlar", unread.length ? "Tümünü okundu say" : null, () => send("social", "clear_all")));
+  body.append(dcCat(t("Direkt mesajlar"), unread.length ? t("Tümünü okundu say") : null, () => send("social", "clear_all")));
   if (!socialReady && !unread.length) {
     const box = dcEmpty("", SOCIAL_MSG[so.status] || "");
     if (so.error) box.append(el("div", "dc-err", so.error));
     body.append(box);
   } else if (!unread.length) {
-    body.append(el("div", "dc-none", "Okunmamış mesaj yok"));
+    body.append(el("div", "dc-none", t("Okunmamış mesaj yok")));
   }
   for (const u of unread) {
     const b = el("button", "dc-dm unread");
@@ -472,8 +472,8 @@ function renderDiscord(d, so) {
   // 3) Arkadaş listesi
   if (socialReady) {
     const list = dcTab === "online" ? so.friends.filter((f) => f.status !== "offline" && f.status !== "unknown") : so.friends;
-    body.append(dcCat((dcTab === "online" ? "Çevrimiçi" : "Tüm arkadaşlar") + " — " + list.length));
-    if (!list.length) body.append(el("div", "dc-none", dcTab === "online" ? "Şu an çevrimiçi arkadaşın yok" : "Arkadaş listesi boş"));
+    body.append(dcCat((dcTab === "online" ? t("Çevrimiçi") : t("Tüm arkadaşlar")) + " — " + list.length));
+    if (!list.length) body.append(el("div", "dc-none", dcTab === "online" ? t("Şu an çevrimiçi arkadaşın yok") : t("Arkadaş listesi boş")));
     for (const f of list) {
       const row = el("div", "dc-friend" + (f.status === "offline" ? " off" : ""));
       const tx = el("div", "tx");
@@ -492,11 +492,11 @@ function renderDiscord(d, so) {
     const tx = el("div", "vtx");
     const ok = el("div", "vok");
     ok.innerHTML = icon("signal");
-    ok.append(document.createTextNode("Ses Bağlandı"));
+    ok.append(document.createTextNode(t("Ses Bağlandı")));
     tx.append(ok, el("div", "vch", [d.channel.name, d.channel.guild].filter(Boolean).join(" / ")));
     const hang = el("button", "dc-btn hang");
     hang.innerHTML = icon("hangup");
-    hang.setAttribute("aria-label", "Bağlantıyı kes");
+    hang.setAttribute("aria-label", t("Bağlantıyı kes"));
     hang.onclick = () => send("discord", "leave_voice");
     voice.append(tx, hang);
   }
@@ -508,17 +508,17 @@ function renderDiscord(d, so) {
   const who = el("div", "who");
   // Kısayol modunda durum okunamaz: düğmeler çalışır ama açık/kapalı gösterilmez
   const keysMode = d.control === "keys";
-  let sub = rpcReady || socialReady ? "@" + ((meUser && meUser.username) || "") : "Çevrimdışı";
-  if (!rpcReady && keysMode) sub = "Mikrofon: kısayol modu";
-  else if (!rpcReady && socialReady) sub = "Mikrofon kontrolü kurulmadı";
+  let sub = rpcReady || socialReady ? "@" + ((meUser && meUser.username) || "") : t("Çevrimdışı");
+  if (!rpcReady && keysMode) sub = t("Mikrofon: kısayol modu");
+  else if (!rpcReady && socialReady) sub = t("Mikrofon kontrolü kurulmadı");
   who.append(el("b", null, meUser ? meUser.name : "Discord"), el("span", null, sub));
   const mic = el("button", "dc-btn" + (rpcReady && d.mute ? " on" : ""));
   mic.innerHTML = rpcReady && d.mute ? icon("mic", "slash") : icon("mic");
-  mic.setAttribute("aria-label", "Mikrofonu kapat/aç");
+  mic.setAttribute("aria-label", t("Mikrofonu kapat/aç"));
   mic.onclick = () => { send("discord", "toggle_mute"); if (keysMode) flashBtn(mic); };
   const hp = el("button", "dc-btn" + (rpcReady && d.deaf ? " on" : ""));
   hp.innerHTML = rpcReady && d.deaf ? icon("headphones", "slash") : icon("headphones");
-  hp.setAttribute("aria-label", "Sağırlaştır");
+  hp.setAttribute("aria-label", t("Sağırlaştır"));
   hp.onclick = () => { send("discord", "toggle_deaf"); if (keysMode) flashBtn(hp); };
   mic.disabled = hp.disabled = !(rpcReady || keysMode);
   user.append(me, who, mic, hp);
@@ -531,10 +531,10 @@ function flashBtn(b) {
 /* ================= Görev Yöneticisi: halka göstergeler ================= */
 const RING_C = 2 * Math.PI * 42;
 const RINGS = [
-  { k: "cpu", name: "CPU", color: "#2fa8e0" },
+  { k: "cpu", name: t("CPU"), color: "#2fa8e0" },
   { k: "gpu", name: "GPU", color: "#3ec07a" },
-  { k: "ram", name: "Bellek", color: "#b65cf2" },
-  { k: "net", name: "Ağ", color: "#e8913a" },
+  { k: "ram", name: t("Bellek"), color: "#b65cf2" },
+  { k: "net", name: t("Ağ"), color: "#e8913a" },
 ];
 let ringEls = null;
 let netPeak = 125000; // en az 1 Mbps ölçek; yavaşça söner
@@ -570,7 +570,7 @@ function renderStats(s) {
     const vram = g.mem_total ? ` · ${nf1.format(g.mem_used / GB)} GB` : "";
     setRing("gpu", g.load, nf0.format(g.load ?? 0), "%", temp(g.temp) + vram, g.temp > 83);
   } else {
-    setRing("gpu", 0, "–", "", "Bulunamadı");
+    setRing("gpu", 0, "–", "", t("Bulunamadı"));
   }
   setRing("ram", s.ram.percent, nf0.format(s.ram.percent), "%", `${nf1.format(s.ram.used / GB)} / ${nf0.format(s.ram.total / GB)} GB`);
   const [dn, du] = fmtRate(s.net.down).split(" ");
@@ -580,8 +580,8 @@ function renderStats(s) {
 /* ================= Hava durumu ================= */
 function sunSVG(cx, cy, r) {
   const rays = [0, 45, 90, 135, 180, 225, 270, 315].map((a) => {
-    const t = (a * Math.PI) / 180;
-    const p = (d) => `${(cx + Math.cos(t) * d).toFixed(1)} ${(cy + Math.sin(t) * d).toFixed(1)}`;
+    const ang = (a * Math.PI) / 180;
+    const p = (d) => `${(cx + Math.cos(ang) * d).toFixed(1)} ${(cy + Math.sin(ang) * d).toFixed(1)}`;
     return `M${p(r + 4)}L${p(r + 9)}`;
   }).join("");
   return `<path d="${rays}" stroke="#FFC83D" stroke-width="3.5" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="#FFC83D"/>`;
@@ -628,17 +628,17 @@ function fillWeatherFly() {
   fly.querySelector(".wx-city").textContent = w.label || w.city || "";
   fly.querySelector(".wx-desc").textContent = w.desc;
   const meta = fly.querySelector(".wx-meta");
-  meta.append(el("span", null, `Hissedilen ${Math.round(w.feels)}°`));
-  if (w.humidity != null) meta.append(el("span", null, `Nem %${Math.round(w.humidity)}`));
-  if (w.wind != null) meta.append(el("span", null, `Rüzgar ${Math.round(w.wind)} km/sa`));
+  meta.append(el("span", null, t("Hissedilen {v}°", { v: Math.round(w.feels) })));
+  if (w.humidity != null) meta.append(el("span", null, t("Nem %{v}", { v: Math.round(w.humidity) })));
+  if (w.wind != null) meta.append(el("span", null, t("Rüzgar {v} km/sa", { v: Math.round(w.wind) })));
   const days = fly.querySelector(".wx-days");
   (w.days || []).slice(0, 4).forEach((d, i) => {
     const dt = new Date(d.date + "T12:00:00");
-    const name = i === 0 ? "Bugün" : i === 1 ? "Yarın" : dt.toLocaleDateString("tr-TR", { weekday: "short" });
+    const name = i === 0 ? t("Bugün") : i === 1 ? t("Yarın") : dt.toLocaleDateString(LOCALE, { weekday: "short" });
     const c = el("div");
     c.innerHTML = `<div class="d"></div><span class="wi">${wxIcon(d.icon, true)}</span><b>${Math.round(d.max)}°</b><span>${Math.round(d.min)}°</span>`;
     c.querySelector(".d").textContent = name;
-    if (d.rain) c.append(el("span", "r", `Yağış %${d.rain}`));
+    if (d.rain) c.append(el("span", "r", t("Yağış %{v}", { v: d.rain })));
     days.append(c);
   });
 }
@@ -692,8 +692,8 @@ $("#b-lock").onclick = () => setTimeout(showIdle, 0);
 function updateIdle(force = false) {
   if ($("#idle").hidden) return;
   const d = new Date();
-  $("#idle-time").textContent = d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-  $("#idle-date").textContent = d.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+  $("#idle-time").textContent = d.toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" });
+  $("#idle-date").textContent = d.toLocaleDateString(LOCALE, { weekday: "long", day: "numeric", month: "long" });
   // Hava durumu
   const wx = $("#idle-wx");
   const w = wxState;
@@ -736,6 +736,7 @@ setInterval(() => updateIdle(), 1000);
 /* ================= Ana render ================= */
 let lastMode = null;
 function render(st) {
+  syncLang(st.lang);
   lastState = st;
   const mode = (st.mode || {}).mode;
   if (mode !== lastMode) { lastMode = mode; resetIdle(); }
@@ -751,8 +752,8 @@ function render(st) {
 /* ================= Görev çubuğu ================= */
 function clock() {
   const d = new Date();
-  $("#clock-time").textContent = d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-  $("#clock-date").textContent = d.toLocaleDateString("tr-TR");
+  $("#clock-time").textContent = d.toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" });
+  $("#clock-date").textContent = d.toLocaleDateString(LOCALE);
 }
 clock();
 setInterval(clock, 1000);

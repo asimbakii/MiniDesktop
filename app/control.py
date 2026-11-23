@@ -22,7 +22,9 @@ import pystray
 import qrcode
 from PIL import Image, ImageTk
 
+import i18n
 import paths
+from i18n import t as tr
 
 APP = "MiniDesktop"
 PORT = paths.PORT
@@ -208,6 +210,8 @@ class App:
         self.qr_url = None
         self.qr_img = None
         self._hooks_checked = False
+        self.lang = i18n.lang()
+        self._fw_state = "allow"
         self._tray_notified = False
 
         self.root = tk.Tk()
@@ -270,7 +274,7 @@ class App:
         if not self._tray_notified:
             self._tray_notified = True
             try:
-                self.tray.notify("MiniDesktop gizli simgelerde çalışmaya devam ediyor. Açmak için simgeye tıkla.", APP)
+                self.tray.notify(tr("MiniDesktop gizli simgelerde çalışmaya devam ediyor. Açmak için simgeye tıkla."), APP)
             except Exception:
                 pass
 
@@ -286,30 +290,30 @@ class App:
         except Exception:
             pass
         tk.Label(head, text=APP, bg=C["bg"], fg=C["text"], font=(FONT_D, 17, "bold")).pack(side="left", padx=(10, 0))
-        self.status_lbl = tk.Label(head, text="● Başlatılıyor", bg=C["bg"], fg=C["warn"], font=(FONT, 10, "bold"))
+        self.status_lbl = tk.Label(head, text=tr("● Başlatılıyor"), bg=C["bg"], fg=C["warn"], font=(FONT, 10, "bold"))
         self.status_lbl.pack(side="right")
 
         # Güvenlik duvarı uyarısı (gerekince görünür)
         self.fw_bar = tk.Frame(f, bg="#442726", highlightthickness=1, highlightbackground="#6b3a38")
-        tk.Label(self.fw_bar, text="⚠  Windows Güvenlik Duvarı tableti engelliyor", bg="#442726", fg="#ffb4ab",
+        tk.Label(self.fw_bar, text=tr("⚠  Windows Güvenlik Duvarı tableti engelliyor"), bg="#442726", fg="#ffb4ab",
                  font=(FONT, 10, "bold")).pack(side="left", padx=12, pady=8)
-        Button(self.fw_bar, "İzin ver", self.fix_firewall, kind="primary", pady=4, padx=10).pack(side="right", padx=8)
+        Button(self.fw_bar, tr("İzin ver"), self.fix_firewall, kind="primary", pady=4, padx=10).pack(side="right", padx=8)
         self.fw_anchor = tk.Frame(f, bg=C["bg"], height=0)
         self.fw_anchor.pack(fill="x")
 
         # Tablet kartı
-        tc = card(f, "Tablet bağlantısı")
+        tc = card(f, tr("Tablet bağlantısı"))
         tc.pack(fill="x", padx=18, pady=(0, 10))
         row = tk.Frame(tc, bg=C["card"])
         row.pack(fill="x", padx=14, pady=(0, 14))
         # Yer tutucu görüntü: Label boyutu karakter değil piksel olarak hesaplansın
         self._qr_blank = ImageTk.PhotoImage(Image.new("RGB", (160, 160), "#e9e9e9"))
         self.qr_lbl = tk.Label(row, image=self._qr_blank, compound="center", bg=C["card"], fg="#555555",
-                               font=(FONT, 10), text="Başlatılıyor…", bd=0)
+                               font=(FONT, 10), text=tr("Başlatılıyor…"), bd=0)
         self.qr_lbl.pack(side="left")
         info = tk.Frame(row, bg=C["card"])
         info.pack(side="left", fill="both", expand=True, padx=(14, 0))
-        tk.Label(info, text="Tablette aç ya da QR'ı okut", bg=C["card"], fg=C["muted"], font=(FONT, 9)).pack(anchor="w")
+        tk.Label(info, text=tr("Tablette aç ya da QR'ı okut"), bg=C["card"], fg=C["muted"], font=(FONT, 9)).pack(anchor="w")
         self.url_lbl = tk.Label(info, text="—", bg=C["card"], fg=C["accent"], font=("Consolas", 11), cursor="hand2")
         self.url_lbl.pack(anchor="w", pady=(2, 0))
         self.url_lbl.bind("<Button-1>", lambda e: self.copy_url())
@@ -318,15 +322,15 @@ class App:
         self.pin_lbl.pack(anchor="w")
         self.dev_lbl = tk.Label(info, text="", bg=C["card"], fg=C["muted"], font=(FONT, 9))
         self.dev_lbl.pack(anchor="w", pady=(6, 0))
-        self.copy_btn = Button(info, "Adresi kopyala", self.copy_url, pady=4, padx=10)
+        self.copy_btn = Button(info, tr("Adresi kopyala"), self.copy_url, pady=4, padx=10)
         self.copy_btn.pack(anchor="w", pady=(8, 0))
 
         # Durum kartı
-        sc = card(f, "Durum")
+        sc = card(f, tr("Durum"))
         sc.pack(fill="x", padx=18, pady=(0, 10))
         self.rows = {}
-        for key, label in (("discord", "Discord (mikrofon)"), ("social", "Arkadaşlar ve DM"), ("claude", "Claude Code"),
-                           ("mode", "Mod"), ("weather", "Hava durumu")):
+        for key, label in (("discord", tr("Discord (mikrofon)")), ("social", tr("Arkadaşlar ve DM")), ("claude", "Claude Code"),
+                           ("mode", tr("Mod")), ("weather", tr("Hava durumu"))):
             r = tk.Frame(sc, bg=C["card"])
             r.pack(fill="x", padx=14, pady=2)
             tk.Label(r, text=label, bg=C["card"], fg=C["muted"], font=(FONT, 10), width=17, anchor="w").pack(side="left")
@@ -338,19 +342,19 @@ class App:
         # Düğmeler
         btns = tk.Frame(f, bg=C["bg"])
         btns.pack(fill="x", padx=18, pady=(2, 8))
-        self.toggle_btn = Button(btns, "Durdur", self.toggle_server, kind="danger")
+        self.toggle_btn = Button(btns, tr("Durdur"), self.toggle_server, kind="danger")
         self.toggle_btn.pack(side="left")
-        Button(btns, "Yeniden başlat", self.restart_server).pack(side="left", padx=6)
-        Button(btns, "Yönetim paneli ↗", self.open_admin, kind="primary").pack(side="right")
+        Button(btns, tr("Yeniden başlat"), self.restart_server).pack(side="left", padx=6)
+        Button(btns, tr("Yönetim paneli ↗"), self.open_admin, kind="primary").pack(side="right")
 
         bottom = tk.Frame(f, bg=C["bg"])
         bottom.pack(fill="x", padx=18, pady=(4, 14))
         self.auto_var = tk.BooleanVar(value=autostart_get())
-        tk.Checkbutton(bottom, text="Windows açılışında başlat", variable=self.auto_var, command=self.toggle_autostart,
+        tk.Checkbutton(bottom, text=tr("Windows açılışında başlat"), variable=self.auto_var, command=self.toggle_autostart,
                        bg=C["bg"], fg=C["text"], selectcolor=C["card"], activebackground=C["bg"], activeforeground=C["text"],
                        font=(FONT, 10), bd=0, highlightthickness=0).pack(side="left")
-        Button(bottom, "Gizli simgelere küçült", self.hide_to_tray, kind="ghost", padx=8, pady=3).pack(side="right")
-        tk.Label(f, text="Pencereyi kapatınca ya da küçültünce MiniDesktop gizli simgelerde çalışmaya devam eder.",
+        Button(bottom, tr("Gizli simgelere küçült"), self.hide_to_tray, kind="ghost", padx=8, pady=3).pack(side="right")
+        tk.Label(f, text=tr("Pencereyi kapatınca ya da küçültünce MiniDesktop gizli simgelerde çalışmaya devam eder."),
                  bg=C["bg"], fg="#6f6f6f", font=(FONT, 8)).pack(pady=(0, 12))
 
     # ---------- tepsi ----------
@@ -360,13 +364,13 @@ class App:
         except Exception:
             image = Image.new("RGB", (64, 64), C["accent"])
         menu = pystray.Menu(
-            pystray.MenuItem("MiniDesktop'ı göster", lambda: self.q.put(("show",)), default=True),
-            pystray.MenuItem("Yönetim paneli", lambda: self.q.put(("admin",))),
-            pystray.MenuItem("Tablet adresini kopyala", lambda: self.q.put(("copy",))),
+            pystray.MenuItem(lambda item: tr("MiniDesktop'ı göster"), lambda: self.q.put(("show",)), default=True),
+            pystray.MenuItem(lambda item: tr("Yönetim paneli"), lambda: self.q.put(("admin",))),
+            pystray.MenuItem(lambda item: tr("Tablet adresini kopyala"), lambda: self.q.put(("copy",))),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem(lambda item: "Sunucuyu durdur" if self.state == "running" else "Sunucuyu başlat",
+            pystray.MenuItem(lambda item: tr("Sunucuyu durdur") if self.state == "running" else tr("Sunucuyu başlat"),
                              lambda: self.q.put(("toggle",))),
-            pystray.MenuItem("Çıkış", lambda: self.q.put(("quit",))),
+            pystray.MenuItem(lambda item: tr("Çıkış"), lambda: self.q.put(("quit",))),
         )
         self.tray = pystray.Icon(APP, image, APP, menu)
         self.tray.run_detached()
@@ -442,6 +446,7 @@ class App:
                 if kind == "info":
                     self._on_info(msg[1])
                 elif kind == "fw":
+                    self._fw_state = msg[1]
                     if msg[1] == "allow":
                         self.fw_bar.pack_forget()
                     elif not self.fw_bar.winfo_ismapped():
@@ -464,7 +469,20 @@ class App:
             pass
         self.root.after(150, self._pump)
 
+    def _rebuild(self):
+        """Dil değişti: pencere içeriğini yeni dille baştan oluştur."""
+        self.full.destroy()
+        self.full = tk.Frame(self.root, bg=C["bg"])
+        self._build_full()
+        self.full.pack(fill="both", expand=True)
+        self.qr_url = None
+        self.q.put(("fw", self._fw_state))
+        self.tray.update_menu()
+
     def _on_info(self, info):
+        if info and info.get("lang") and info["lang"] != self.lang:
+            self.lang = info["lang"]
+            self._rebuild()
         self.info = info
         if info and self.state in ("starting", "stopped"):
             self.state = "running"
@@ -482,21 +500,21 @@ class App:
     def _render(self):
         st = self.state
         text, color = {
-            "running": ("● Çalışıyor", C["ok"]), "starting": ("● Başlatılıyor", C["warn"]),
-            "stopping": ("● Durduruluyor", C["warn"]), "stopped": ("● Durdu", C["bad"]),
+            "running": (tr("● Çalışıyor"), C["ok"]), "starting": (tr("● Başlatılıyor"), C["warn"]),
+            "stopping": (tr("● Durduruluyor"), C["warn"]), "stopped": (tr("● Durdu"), C["bad"]),
         }[st]
         self.status_lbl.configure(text=text, fg=color)
         running = st in ("running", "starting")
-        self.toggle_btn.set_kind("Durdur" if running else "Başlat", "danger" if running else "primary")
+        self.toggle_btn.set_kind(tr("Durdur") if running else tr("Başlat"), "danger" if running else "primary")
 
         info = self.info if st == "running" else None
         if not info:
-            self.url_lbl.configure(text="Sunucu kapalı" if st == "stopped" else "…")
+            self.url_lbl.configure(text=tr("Sunucu kapalı") if st == "stopped" else "…")
             self.pin_lbl.configure(text="— — —")
             self.dev_lbl.configure(text="")
             if self.qr_url is not None:
                 self.qr_url = None
-                self.qr_lbl.configure(image=self._qr_blank, text="Sunucu kapalı" if st == "stopped" else "Başlatılıyor…")
+                self.qr_lbl.configure(image=self._qr_blank, text=tr("Sunucu kapalı") if st == "stopped" else tr("Başlatılıyor…"))
             for v in self.rows.values():
                 v.configure(text="—", fg=C["muted"])
             return
@@ -506,7 +524,7 @@ class App:
         self.url_lbl.configure(text=base.replace("http://", ""))
         self.pin_lbl.configure(text=f"{pin[:3]} {pin[3:]}")
         n = len(info.get("devices", []))
-        self.dev_lbl.configure(text=f"Eşli cihaz: {n}" if n else "Henüz eşli cihaz yok")
+        self.dev_lbl.configure(text=tr("Eşli cihaz: {n}", n=n) if n else tr("Henüz eşli cihaz yok"))
         url = info.get("url")
         if url and url != self.qr_url:
             self.qr_url = url
@@ -519,42 +537,42 @@ class App:
         c = info.get("claude") or {}
         m = info.get("modes") or {}
         w = info.get("weather") or {}
-        dmap = {"ready": ("Bağlı", C["ok"]), "not_configured": ("Ayarlanmadı", C["muted"]), "disconnected": ("Discord kapalı", C["warn"]),
-                "authorizing": ("İzin bekleniyor", C["warn"]), "connecting": ("Bağlanıyor…", C["warn"]), "error": ("Hata", C["bad"]),
-                "no_bridge": ("Köprü yok", C["muted"]), "starting": ("Başlıyor…", C["warn"]), "stopped": ("Durdu", C["muted"])}
+        dmap = {"ready": (tr("Bağlı"), C["ok"]), "not_configured": (tr("Ayarlanmadı"), C["muted"]), "disconnected": (tr("Discord kapalı"), C["warn"]),
+                "authorizing": (tr("İzin bekleniyor"), C["warn"]), "connecting": (tr("Bağlanıyor…"), C["warn"]), "error": (tr("Hata"), C["bad"]),
+                "no_bridge": (tr("Köprü yok"), C["muted"]), "starting": (tr("Başlıyor…"), C["warn"]), "stopped": (tr("Durdu"), C["muted"])}
         if d.get("control") == "rpc":
-            t, col = "Tam kontrol" + (f" · {d['user'].get('name')}" if d.get("user") else ""), C["ok"]
+            t, col = tr("Tam kontrol") + (f" · {d['user'].get('name')}" if d.get("user") else ""), C["ok"]
         elif d.get("control") == "keys":
-            t, col = f"Kısayol modu · {(d.get('keys') or {}).get('mute', '')}", C["ok"]
+            t, col = tr("Kısayol modu · {k}", k=(d.get('keys') or {}).get('mute', '')), C["ok"]
         else:
             t, col = dmap.get(d.get("status"), (d.get("status") or "—", C["muted"]))
         self.rows["discord"].configure(text=t, fg=col)
         # Arkadaş listesi: bağlı değilse satıra tıklayınca tek adımda bağlan
         social_row = self.rows["social"]
         if s.get("status") == "not_configured" and s.get("bridge_built", True):
-            social_row.configure(text="Bağlı değil · Bağlan →", fg=C["accent"], cursor="hand2")
+            social_row.configure(text=tr("Bağlı değil · Bağlan →"), fg=C["accent"], cursor="hand2")
             social_row.bind("<Button-1>", lambda e: self._bg(lambda: api("/api/admin/social/connect", {}, timeout=5)))
         else:
             t, col = dmap.get(s.get("status"), (s.get("status") or "—", C["muted"]))
             if s.get("status") == "ready":
-                t += f" · {s.get('friends', 0)} arkadaş"
+                t += " · " + tr("{n} arkadaş", n=s.get('friends', 0))
             elif s.get("status") == "authorizing":
-                t = "Discord'daki izin penceresini onayla"
+                t = tr("Discord'daki izin penceresini onayla")
             social_row.configure(text=t, fg=col, cursor="")
             social_row.unbind("<Button-1>")
         if c.get("installed"):
-            self.rows["claude"].configure(text=f"Kurulu · {c.get('sessions', 0)} oturum", fg=C["ok"])
+            self.rows["claude"].configure(text=tr("Kurulu · {n} oturum", n=c.get('sessions', 0)), fg=C["ok"])
         else:
-            self.rows["claude"].configure(text="Kurulu değil", fg=C["muted"])
-        names = {"normal": "Normal", "dev": "Geliştirici", "game": "Oyun", "night": "Gece"}
-        mode_txt = names.get(m.get("mode"), "—") + (" (otomatik)" if m.get("auto") else "")
+            self.rows["claude"].configure(text=tr("Kurulu değil"), fg=C["muted"])
+        names = {"normal": tr("Normal"), "dev": tr("Geliştirici"), "game": tr("Oyun"), "night": tr("Gece")}
+        mode_txt = names.get(m.get("mode"), "—") + (tr(" (otomatik)") if m.get("auto") else "")
         if m.get("game"):
             mode_txt += f" · {m['game']['name']}"
         self.rows["mode"].configure(text=mode_txt, fg=C["text"])
         if w.get("label"):
             self.rows["weather"].configure(text=f"{w['label']}" + (f" · {round(w['temp'])}°C, {w.get('desc', '')}" if w.get("temp") is not None else ""), fg=C["text"])
         else:
-            self.rows["weather"].configure(text="Ayarlanmadı", fg=C["muted"])
+            self.rows["weather"].configure(text=tr("Ayarlanmadı"), fg=C["muted"])
 
     # ---------- eylemler ----------
     def open_admin(self):
@@ -567,8 +585,8 @@ class App:
             return
         self.root.clipboard_clear()
         self.root.clipboard_append(self.info.get("base", ""))
-        self.copy_btn.configure(text="Kopyalandı ✓")
-        self.root.after(1500, lambda: self.copy_btn.configure(text="Adresi kopyala"))
+        self.copy_btn.configure(text=tr("Kopyalandı ✓"))
+        self.root.after(1500, lambda: self.copy_btn.configure(text=tr("Adresi kopyala")))
 
     def toggle_autostart(self):
         try:

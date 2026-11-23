@@ -11,10 +11,10 @@ Object.assign(ICONS, {
 
 function fmtAgo(ts) {
   const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
-  if (s < 5) return "şimdi";
-  if (s < 60) return `${s} sn`;
-  if (s < 3600) return `${Math.floor(s / 60)} dk`;
-  return `${Math.floor(s / 3600)} sa ${Math.floor((s % 3600) / 60)} dk`;
+  if (s < 5) return t("şimdi");
+  if (s < 60) return t("{n} sn", { n: s });
+  if (s < 3600) return t("{n} dk", { n: Math.floor(s / 60) });
+  return t("{h} sa {m} dk", { h: Math.floor(s / 3600), m: Math.floor((s % 3600) / 60) });
 }
 function fmtMB(b) {
   const mb = b / 1048576;
@@ -33,21 +33,21 @@ function emptyMsg(text) {
 
 /* ================= Claude Code (Windows Terminal görünümü) ================= */
 const CL_STATE = {
-  working: ["Çalışıyor", "spin"],
-  permission: ["İzin bekliyor", "!"],
-  waiting: ["Cevap bekliyor", "?"],
-  done: ["Tamamlandı", "✓"],
-  idle: ["Boşta", "○"],
+  working: [t("Çalışıyor"), "spin"],
+  permission: [t("İzin bekliyor"), "!"],
+  waiting: [t("Cevap bekliyor"), "?"],
+  done: [t("Tamamlandı"), "✓"],
+  idle: [t("Boşta"), "○"],
 };
 function renderClaude(c) {
   const sessions = c.sessions || [];
-  $("#cl-count").textContent = sessions.length ? `${sessions.length} oturum` : "";
+  $("#cl-count").textContent = sessions.length ? t("{n} oturum", { n: sessions.length }) : "";
   // Geçen süre her saniye değiştiği için imzaya dakika hassasiyetinde giriyor
   if (!changed("claude", [c, Math.floor(Date.now() / 10000)])) return;
   const body = $("#cl-body");
   body.replaceChildren();
   if (!sessions.length) {
-    body.append(emptyMsg(c.installed ? "Açık Claude Code oturumu yok." : "Claude Code entegrasyonu kurulu değil. PC'de localhost:8765/admin → Geliştirici modu → Kur."));
+    body.append(emptyMsg(c.installed ? t("Açık Claude Code oturumu yok.") : t("Claude Code entegrasyonu kurulu değil. PC'de localhost:8765/admin → Geliştirici modu → Kur.")));
     return;
   }
   for (const s of sessions) {
@@ -60,12 +60,12 @@ function renderClaude(c) {
     st.append(document.createTextNode(label));
     const dismiss = el("button", "cl-x");
     dismiss.innerHTML = icon("close");
-    dismiss.setAttribute("aria-label", "Listeden kaldır");
+    dismiss.setAttribute("aria-label", t("Listeden kaldır"));
     dismiss.onclick = () => send("claude", "dismiss", { value: s.id });
     top.append(el("b", "cl-proj", s.project || "Oturum"), st, el("span", "cl-time", fmtAgo(s.since)), dismiss);
     row.append(top, el("div", "cl-detail", s.detail || ""));
     if (s.prompt) row.append(el("div", "cl-prompt", "› " + s.prompt));
-    if (s.state === "working" && s.tools) row.append(el("div", "cl-meta", `${s.tools} araç çağrısı`));
+    if (s.state === "working" && s.tools) row.append(el("div", "cl-meta", t("{n} araç çağrısı", { n: s.tools })));
     body.append(row);
   }
 }
@@ -73,11 +73,11 @@ function renderClaude(c) {
 /* ================= Kaynak Denetimi (VS Code görünümü) ================= */
 function ciBadge(ci) {
   if (!ci) return null;
-  let cls = "run", txt = "Çalışıyor";
+  let cls = "run", txt = t("Çalışıyor");
   if (ci.status === "completed") {
-    if (ci.conclusion === "success") (cls = "ok"), (txt = "Başarılı");
-    else if (ci.conclusion === "skipped" || ci.conclusion === "cancelled") (cls = "skip"), (txt = ci.conclusion === "skipped" ? "Atlandı" : "İptal");
-    else (cls = "fail"), (txt = "Başarısız");
+    if (ci.conclusion === "success") (cls = "ok"), (txt = t("Başarılı"));
+    else if (ci.conclusion === "skipped" || ci.conclusion === "cancelled") (cls = "skip"), (txt = ci.conclusion === "skipped" ? t("Atlandı") : t("İptal"));
+    else (cls = "fail"), (txt = t("Başarısız"));
   }
   const b = el("button", `ci ci-${cls}`);
   b.append(el("i"), document.createTextNode(`${ci.workflowName || "CI"}: ${txt}`));
@@ -87,27 +87,27 @@ function ciBadge(ci) {
 function prList(title, items) {
   const box = el("div", "pr-sec");
   box.append(el("div", "vsc-head", `${title} (${items.length})`));
-  if (!items.length) box.append(el("div", "pr-none", "Yok"));
+  if (!items.length) box.append(el("div", "pr-none", t("Yok")));
   for (const p of items) {
     const b = el("button", "pr");
     const repo = (p.repository && (p.repository.nameWithOwner || p.repository.name)) || "";
-    b.append(el("span", "pr-repo", `${repo}#${p.number}`), el("span", "pr-title", (p.isDraft ? "[Taslak] " : "") + p.title));
+    b.append(el("span", "pr-repo", `${repo}#${p.number}`), el("span", "pr-title", (p.isDraft ? t("[Taslak] ") : "") + p.title));
     b.onclick = () => send("git", "open_url", { value: p.url });
     box.append(b);
   }
   return box;
 }
 function renderGit(g) {
-  const age = g.gh && g.gh.updated ? `GitHub · ${fmtAgo(g.gh.updated)} önce` : g.gh && g.gh.available ? "GitHub yükleniyor…" : "";
+  const age = g.gh && g.gh.updated ? t("GitHub · {x} önce", { x: fmtAgo(g.gh.updated) }) : g.gh && g.gh.available ? t("GitHub yükleniyor…") : "";
   $("#git-age").textContent = age;
   if (!changed("git", [g.repos, g.gh && g.gh.review, g.gh && g.gh.mine, g.gh && g.gh.error])) return;
   const body = $("#git-body");
   body.replaceChildren();
-  body.append(el("div", "vsc-head", "Repolar"));
-  if (!g.repos.length) body.append(emptyMsg("İzlenen repo yok. Yönetim sayfasından ekle ya da bir repoda Claude Code çalıştır."));
+  body.append(el("div", "vsc-head", t("Repolar")));
+  if (!g.repos.length) body.append(emptyMsg(t("İzlenen repo yok. Yönetim sayfasından ekle ya da bir repoda Claude Code çalıştır.")));
   for (const r of g.repos) {
     const b = el("button", "repo");
-    b.title = "VS Code'da aç";
+    b.title = t("VS Code'da aç");
     b.onclick = () => send("git", "open_repo", { value: r.path });
     const top = el("div", "repo-top");
     top.append(el("b", null, r.name));
@@ -127,7 +127,7 @@ function renderGit(g) {
     if (r.staged) badges.append(el("span", "bd bd-s", `S ${r.staged}`));
     if (r.changed) badges.append(el("span", "bd bd-m", `M ${r.changed}`));
     if (r.untracked) badges.append(el("span", "bd bd-u", `U ${r.untracked}`));
-    if (!r.conflicts && !r.staged && !r.changed && !r.untracked) badges.append(el("span", "bd bd-clean", "temiz"));
+    if (!r.conflicts && !r.staged && !r.changed && !r.untracked) badges.append(el("span", "bd bd-clean", t("temiz")));
     top.append(badges);
     b.append(top);
     if (r.last) b.append(el("div", "repo-last", `${r.last.hash} ${r.last.subject} · ${r.last.when}`));
@@ -136,14 +136,14 @@ function renderGit(g) {
     body.append(b);
   }
   if (g.gh && g.gh.available) {
-    body.append(prList("İnceleme bekleyen PR'lar", g.gh.review || []), prList("Açık PR'larım", g.gh.mine || []));
+    body.append(prList(t("İnceleme bekleyen PR'lar"), g.gh.review || []), prList(t("Açık PR'larım"), g.gh.mine || []));
     if (g.gh.error) body.append(el("div", "repo-err", g.gh.error));
   }
 }
 
 /* ================= Komutlar (Windows Terminal sekmeleri) ================= */
 let cmdSel = store.get("md_cmd");
-const CMD_STATUS = { idle: "Hazır", running: "Çalışıyor", ok: "Başarılı", fail: "Hata", stopped: "Durduruldu" };
+const CMD_STATUS = { idle: t("Hazır"), running: t("Çalışıyor"), ok: t("Başarılı"), fail: t("Hata"), stopped: t("Durduruldu") };
 function renderCommands(cmds) {
   if (!cmds.some((c) => c.id === cmdSel)) cmdSel = cmds[0] ? cmds[0].id : null;
   if (!changed("cmds", [cmds, cmdSel])) return;
@@ -151,15 +151,15 @@ function renderCommands(cmds) {
   tabs.replaceChildren();
   body.replaceChildren();
   if (!cmds.length) {
-    tabs.append(el("span", "term-tab on", "Komutlar"));
-    body.append(emptyMsg("Komut yok. PC'de localhost:8765/admin → Geliştirici modu → Komut butonları."));
+    tabs.append(el("span", "term-tab on", t("Komutlar")));
+    body.append(emptyMsg(t("Komut yok. PC'de localhost:8765/admin → Geliştirici modu → Komut butonları.")));
     return;
   }
   for (const c of cmds) {
-    const t = el("button", `term-tab cmd-${c.status}` + (c.id === cmdSel ? " on" : ""));
-    t.append(el("i", "dot"), document.createTextNode(c.name));
-    t.onclick = () => { cmdSel = c.id; store.set("md_cmd", c.id); renderCommands(cmds); };
-    tabs.append(t);
+    const tab = el("button", `term-tab cmd-${c.status}` + (c.id === cmdSel ? " on" : ""));
+    tab.append(el("i", "dot"), document.createTextNode(c.name));
+    tab.onclick = () => { cmdSel = c.id; store.set("md_cmd", c.id); renderCommands(cmds); };
+    tabs.append(tab);
   }
   const c = cmds.find((x) => x.id === cmdSel);
   const bar = el("div", "cmd-bar");
@@ -170,11 +170,11 @@ function renderCommands(cmds) {
   if (c.status === "fail" && c.code != null) st.textContent += ` (${c.code})`;
   if (c.started && c.status !== "idle") st.textContent += ` · ${fmtTime((c.ended || Date.now() / 1000) - c.started)}`;
   const run = el("button", "cmd-run" + (c.status === "running" ? " stop" : ""));
-  run.innerHTML = c.status === "running" ? icon("stop") + "<span>Durdur</span>" : icon("playOutline") + "<span>Çalıştır</span>";
+  run.innerHTML = c.status === "running" ? icon("stop") + `<span>${t("Durdur")}</span>` : icon("playOutline") + `<span>${t("Çalıştır")}</span>`;
   run.onclick = () => send("cmd", c.status === "running" ? "stop" : "start", { value: c.id });
   bar.append(info, st, run);
   const out = el("pre", "cmd-out");
-  out.textContent = (c.tail || []).join("\n") || "Henüz çıktı yok.";
+  out.textContent = (c.tail || []).join("\n") || t("Henüz çıktı yok.");
   body.append(bar, out);
   out.scrollTop = out.scrollHeight;
 }
@@ -197,7 +197,7 @@ $("#rm-devonly").onchange = (e) => { rmDevOnly = e.target.checked; store.set("md
 function killButton(label, pids, key) {
   const k = el("button", "rm-act danger");
   const armed = rmArmed === key;
-  k.textContent = armed ? `Emin misin? ${label}` : label;
+  k.textContent = armed ? t("Emin misin? {label}", { label }) : label;
   if (armed) k.classList.add("armed");
   k.onclick = (e) => {
     e.stopPropagation();
@@ -215,25 +215,25 @@ function renderRmon(sys) {
   const table = el("div", "rm-table rm-" + rmView);
   if (rmView === "ports") {
     const ports = sys.ports.filter((p) => !rmDevOnly || p.dev);
-    table.append(rmRow(["Port", "Süreç", "Adres"], "rm-h"));
-    if (!ports.length) body.append(emptyMsg(rmDevOnly ? "Dinlemede geliştirme sunucusu yok." : "Dinlemede port yok."));
+    table.append(rmRow([t("Port"), t("Süreç"), t("Adres")], "rm-h"));
+    if (!ports.length) body.append(emptyMsg(rmDevOnly ? t("Dinlemede geliştirme sunucusu yok.") : t("Dinlemede port yok.")));
     for (const p of ports) {
       const key = "p" + p.port;
-      const row = rmRow([String(p.port), p.name, p.local_only ? "yerel" : "ağ"], "rm-r" + (p.dev ? " dev" : ""));
+      const row = rmRow([String(p.port), p.name, p.local_only ? t("yerel") : t("ağ")], "rm-r" + (p.dev ? " dev" : ""));
       row.onclick = () => { rmSel = rmSel === key ? null : key; rmArmed = null; sigs.rm = null; renderRmon(sys); };
       table.append(row);
       if (rmSel === key) {
         const acts = el("div", "rm-acts");
-        const open = el("button", "rm-act", "PC'de tarayıcıda aç");
+        const open = el("button", "rm-act", t("PC'de tarayıcıda aç"));
         open.onclick = (e) => { e.stopPropagation(); send("sys", "open_port", { value: p.port }); };
-        acts.append(open, killButton(`${p.name} sonlandır`, [p.pid], key));
+        acts.append(open, killButton(t("{name} sonlandır", { name: p.name }), [p.pid], key));
         table.append(acts);
       }
     }
   } else {
     const procs = sys.procs.filter((p) => !rmDevOnly || p.dev).slice(0, 14);
-    table.append(rmRow(["Ad", "CPU", "Bellek"], "rm-h"));
-    if (!procs.length) body.append(emptyMsg("Geliştirme süreci yok."));
+    table.append(rmRow([t("Ad"), t("CPU"), t("Bellek")], "rm-h"));
+    if (!procs.length) body.append(emptyMsg(t("Geliştirme süreci yok.")));
     for (const p of procs) {
       const key = "n" + p.name;
       const row = rmRow([p.count > 1 ? `${p.name} (${p.count})` : p.name, `${nf1.format(p.cpu)}%`, fmtMB(p.rss)], "rm-r" + (p.dev ? " dev" : ""));
@@ -242,7 +242,7 @@ function renderRmon(sys) {
       table.append(row);
       if (rmSel === key) {
         const acts = el("div", "rm-acts");
-        acts.append(killButton(p.count > 1 ? `${p.count} süreci sonlandır` : "Sonlandır", p.pids, key));
+        acts.append(killButton(p.count > 1 ? t("{n} süreci sonlandır", { n: p.count }) : t("Sonlandır"), p.pids, key));
         table.append(acts);
       }
     }
@@ -259,8 +259,8 @@ function rmRow(cells, cls) {
 let cpView = "history";
 const cpReveal = new Set(); // kullanıcının gösterdiği maskeli öğeler
 // Anahtar/token'a benzeyen metinleri varsayılan olarak maskele
-function looksSecret(t) {
-  const s = t.trim();
+function looksSecret(text) {
+  const s = text.trim();
   if (/^(sk-|sk_|pk_|rk_|ghp_|gho_|ghs_|ghu_|github_pat_|glpat-|xox[abprs]-|AKIA|AIza|eyJ)/.test(s)) return true;
   return !/\s/.test(s) && s.length >= 20 && /[a-z]/i.test(s) && /\d/.test(s) && !/^https?:\/\//.test(s) && !/^[A-Za-z]:[\\/]/.test(s);
 }
@@ -273,9 +273,9 @@ for (const b of document.querySelectorAll("#cp-seg button")) {
 }
 $("#cp-send").onsubmit = (e) => {
   e.preventDefault();
-  const t = $("#cp-text").value;
-  if (!t) return;
-  send("clip", "set", { value: t });
+  const text = $("#cp-text").value;
+  if (!text) return;
+  send("clip", "set", { value: text });
   $("#cp-text").value = "";
 };
 function renderClip(clip) {
@@ -284,19 +284,19 @@ function renderClip(clip) {
   const body = $("#cp-body");
   body.replaceChildren();
   if (cpView === "history") {
-    if (!clip.history.length) body.append(emptyMsg("PC'de bir metin kopyaladığında burada görünür. Şifre yöneticilerinin içerikleri gösterilmez."));
+    if (!clip.history.length) body.append(emptyMsg(t("PC'de bir metin kopyaladığında burada görünür. Şifre yöneticilerinin içerikleri gösterilmez.")));
     else {
-      const clr = el("button", "cp-clear", "Geçmişi temizle");
+      const clr = el("button", "cp-clear", t("Geçmişi temizle"));
       clr.onclick = () => send("clip", "clear");
       body.append(clr);
     }
     for (const h of clip.history) {
       const b = el("button", "cp-item");
       const secret = looksSecret(h.text) && !cpReveal.has(h.id);
-      const shown = secret ? `${h.text.slice(0, 4)}••••••••  (gizli olabilir · ${h.text.length}${h.long ? "+" : ""} karakter)` : h.text + (h.long ? "…" : "");
-      b.append(el("span", "cp-text" + (secret ? " masked" : ""), shown), el("span", "cp-time", fmtAgo(h.ts) + " önce"));
+      const shown = secret ? `${h.text.slice(0, 4)}••••••••  (${t("gizli olabilir · {n} karakter", { n: h.text.length + (h.long ? "+" : "") })})` : h.text + (h.long ? "…" : "");
+      b.append(el("span", "cp-text" + (secret ? " masked" : ""), shown), el("span", "cp-time", t("{x} önce", { x: fmtAgo(h.ts) })));
       if (looksSecret(h.text)) {
-        const eye = el("span", "cp-eye", cpReveal.has(h.id) ? "Gizle" : "Göster");
+        const eye = el("span", "cp-eye", cpReveal.has(h.id) ? t("Gizle") : t("Göster"));
         eye.onclick = (e) => { e.stopPropagation(); cpReveal.has(h.id) ? cpReveal.delete(h.id) : cpReveal.add(h.id); sigs.clip = null; renderClip(lastState.dev && lastState.dev.clip); };
         b.append(eye);
       }
@@ -304,7 +304,7 @@ function renderClip(clip) {
       body.append(b);
     }
   } else {
-    if (!clip.snippets.length) body.append(emptyMsg("Snippet yok. PC'de localhost:8765/admin → Geliştirici modu → Snippet'ler."));
+    if (!clip.snippets.length) body.append(emptyMsg(t("Snippet yok. PC'de localhost:8765/admin → Geliştirici modu → Snippet'ler.")));
     const grid = el("div", "cp-snips");
     for (const s of clip.snippets) {
       const b = el("button", "cp-snip");
@@ -318,7 +318,7 @@ function renderClip(clip) {
 
 /* ================= Dev Araçları ================= */
 const TOOLS = [
-  ["uuid", "UUID"], ["time", "Zaman"], ["jwt", "JWT"], ["b64", "Base64"], ["url", "URL"],
+  ["uuid", "UUID"], ["time", t("Zaman")], ["jwt", "JWT"], ["b64", "Base64"], ["url", "URL"],
 ];
 let tool = store.get("md_tool") || "uuid";
 let clipWaiter = null;
@@ -364,7 +364,7 @@ function toolRow(label, value, copyable = true) {
   if (copyable) {
     const c = el("button", "tl-copy");
     c.innerHTML = icon("copy");
-    c.setAttribute("aria-label", "PC'ye kopyala");
+    c.setAttribute("aria-label", t("PC'ye kopyala"));
     c.onclick = () => toPC(v.textContent);
     r.append(c);
   }
@@ -376,8 +376,8 @@ function textInput(ph, onInput) {
   ta.rows = 3;
   ta.placeholder = ph;
   ta.oninput = () => onInput(ta.value);
-  const get = el("button", "tl-btn", "PC panosundan al");
-  get.onclick = () => fromPC((t) => { ta.value = t; onInput(t); });
+  const get = el("button", "tl-btn", t("PC panosundan al"));
+  get.onclick = () => fromPC((text) => { ta.value = text; onInput(text); });
   wrap.append(ta, get);
   return wrap;
 }
@@ -393,8 +393,8 @@ function buildTool() {
   body.replaceChildren();
   const out = el("div", "tl-out");
   if (tool === "uuid") {
-    const gen = () => { out.replaceChildren(toolRow("UUID v4", uuid4()), toolRow("BÜYÜK HARF", uuid4().toUpperCase())); };
-    const b = el("button", "tl-btn primary", "Yeni üret");
+    const gen = () => { out.replaceChildren(toolRow("UUID v4", uuid4()), toolRow(t("BÜYÜK HARF"), uuid4().toUpperCase())); };
+    const b = el("button", "tl-btn primary", t("Yeni üret"));
     b.onclick = gen;
     body.append(b, out);
     gen();
@@ -402,52 +402,52 @@ function buildTool() {
     const show = (v) => {
       out.replaceChildren();
       let d;
-      const t = v.trim();
-      if (!t) d = new Date();
-      else if (/^-?\d+(\.\d+)?$/.test(t)) d = new Date(Number(t) * (t.replace(/^-/, "").split(".")[0].length > 11 ? 1 : 1000));
-      else d = new Date(t);
-      if (isNaN(d)) { out.append(el("div", "tl-err", "Tarih ya da Unix zamanı tanınmadı.")); return; }
+      const raw = v.trim();
+      if (!raw) d = new Date();
+      else if (/^-?\d+(\.\d+)?$/.test(raw)) d = new Date(Number(raw) * (raw.replace(/^-/, "").split(".")[0].length > 11 ? 1 : 1000));
+      else d = new Date(raw);
+      if (isNaN(d)) { out.append(el("div", "tl-err", t("Tarih ya da Unix zamanı tanınmadı."))); return; }
       const rel = Math.round((d - Date.now()) / 1000);
       out.append(
-        toolRow("Unix (sn)", String(Math.floor(d / 1000))),
+        toolRow(t("Unix (sn)"), String(Math.floor(d / 1000))),
         toolRow("Unix (ms)", String(d.getTime())),
         toolRow("ISO (UTC)", d.toISOString()),
-        toolRow("Yerel", d.toLocaleString("tr-TR")),
-        toolRow("Göreli", rel === 0 ? "şimdi" : rel < 0 ? `${fmtAgo(d / 1000)} önce` : `${fmtAgo(Date.now() / 1000 - rel)} sonra`, false),
+        toolRow(t("Yerel"), d.toLocaleString(LOCALE)),
+        toolRow(t("Göreli"), rel === 0 ? t("şimdi") : rel < 0 ? t("{x} önce", { x: fmtAgo(d / 1000) }) : t("{x} sonra", { x: fmtAgo(Date.now() / 1000 - rel) }), false),
       );
     };
-    body.append(textInput("Unix zamanı ya da tarih (boş = şimdi)", show), out);
+    body.append(textInput(t("Unix zamanı ya da tarih (boş = şimdi)"), show), out);
     show("");
   } else if (tool === "jwt") {
     const show = (v) => {
       out.replaceChildren();
       const parts = v.trim().replace(/^Bearer\s+/i, "").split(".");
-      if (parts.length < 2) { if (v.trim()) out.append(el("div", "tl-err", "Geçerli bir JWT değil.")); return; }
+      if (parts.length < 2) { if (v.trim()) out.append(el("div", "tl-err", t("Geçerli bir JWT değil."))); return; }
       try {
         const head = JSON.parse(b64urlDecode(parts[0]));
         const pay = JSON.parse(b64urlDecode(parts[1]));
         if (pay.exp) {
           const left = pay.exp - Date.now() / 1000;
-          out.append(el("div", left > 0 ? "tl-ok" : "tl-err", left > 0 ? `Geçerli · ${fmtAgo(Date.now() / 1000 - left)} sonra sona erecek` : `Süresi dolmuş · ${fmtAgo(pay.exp)} önce`));
+          out.append(el("div", left > 0 ? "tl-ok" : "tl-err", left > 0 ? t("Geçerli · {x} sonra sona erecek", { x: fmtAgo(Date.now() / 1000 - left) }) : t("Süresi dolmuş · {x} önce", { x: fmtAgo(pay.exp) })));
         }
         const pre = (o) => { const p = el("pre", "tl-json"); p.textContent = JSON.stringify(o, null, 2); return p; };
         out.append(el("div", "tl-lbl", "Header"), pre(head), el("div", "tl-lbl", "Payload"), pre(pay));
-        const c = el("button", "tl-btn", "Payload'ı PC'ye kopyala");
+        const c = el("button", "tl-btn", t("Payload'ı PC'ye kopyala"));
         c.onclick = () => toPC(JSON.stringify(pay, null, 2));
         out.append(c);
-      } catch { out.append(el("div", "tl-err", "Çözülemedi: Base64/JSON hatası.")); }
+      } catch { out.append(el("div", "tl-err", t("Çözülemedi: Base64/JSON hatası."))); }
     };
-    body.append(textInput("JWT yapıştır ya da PC panosundan al", show), out);
+    body.append(textInput(t("JWT yapıştır ya da PC panosundan al"), show), out);
   } else if (tool === "b64" || tool === "url") {
     const show = (v) => {
       out.replaceChildren();
       if (!v) return;
       const rows = [];
-      try { rows.push(toolRow("Kodla", tool === "b64" ? utf8ToB64(v) : encodeURIComponent(v))); } catch { rows.push(el("div", "tl-err", "Kodlanamadı")); }
-      try { rows.push(toolRow("Çöz", tool === "b64" ? b64ToUtf8(v) : decodeURIComponent(v))); } catch { rows.push(el("div", "tl-muted", "Çözülemedi (geçerli bir " + (tool === "b64" ? "Base64" : "URL kodlaması") + " değil)")); }
+      try { rows.push(toolRow(t("Kodla"), tool === "b64" ? utf8ToB64(v) : encodeURIComponent(v))); } catch { rows.push(el("div", "tl-err", t("Kodlanamadı"))); }
+      try { rows.push(toolRow(t("Çöz"), tool === "b64" ? b64ToUtf8(v) : decodeURIComponent(v))); } catch { rows.push(el("div", "tl-muted", t("Çözülemedi (geçerli bir {what} değil)", { what: tool === "b64" ? "Base64" : t("URL kodlaması") }))); }
       out.append(...rows);
     };
-    body.append(textInput("Metin", show), out);
+    body.append(textInput(t("Metin"), show), out);
   }
 }
 buildTool();
