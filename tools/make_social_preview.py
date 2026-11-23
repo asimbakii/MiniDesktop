@@ -39,15 +39,15 @@ def main():
     logo = Image.open(ROOT / "web" / "icon-512.png").convert("RGBA").resize((96, 96), Image.LANCZOS)
     img.paste(logo, (64, 70), logo)
     d.text((176, 78), "MiniDesktop", font=bold(68), fill="#ffffff")
-    d.text((66, 200), "Turn any tablet into a second", font=reg(36), fill="#e6e6ef")
-    d.text((66, 246), "screen for your Windows PC", font=reg(36), fill="#e6e6ef")
+    d.text((66, 200), "Turn any tablet into a", font=reg(36), fill="#e6e6ef")
+    d.text((66, 246), "second screen for your PC", font=reg(36), fill="#e6e6ef")
     y = 324
     for f in ("Media & volume control", "Discord friends & mic", "Live CPU / GPU stats", "Claude Code & git dashboard"):
         d.ellipse((70, y + 11, 82, y + 23), fill="#4cc2ff")
         d.text((96, y), f, font=reg(27), fill="#c9c9d6")
         y += 44
     x = 66
-    for chip in ("Android", "iPad", "HarmonyOS", "Windows 10/11"):
+    for chip in ("Android", "iPad", "HarmonyOS", "Windows", "Linux"):
         tw = d.textlength(chip, font=bold(22))
         d.rounded_rectangle((x, 530, x + tw + 32, 572), radius=21, fill="#1f2433", outline="#3a4258")
         d.text((x + 16, 537), chip, font=bold(22), fill="#ffffff")

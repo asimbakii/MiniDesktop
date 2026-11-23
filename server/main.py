@@ -314,6 +314,7 @@ async def admin_info(request: Request, ip: str = ""):
         "devcfg": devcfg.data,
         "gh": bool(gitwatch.gh["available"]),
         "cpu_temp": (state.get("stats") or {}).get("cpu", {}).get("temp"),
+        "platform": "windows" if sys.platform == "win32" else "linux",
     }
 
 

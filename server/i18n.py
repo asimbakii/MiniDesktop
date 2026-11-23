@@ -150,6 +150,7 @@ EN = {
     "Yeniden başlat": "Restart",
     "Yönetim paneli ↗": "Admin panel ↗",
     "Windows açılışında başlat": "Start with Windows",
+    "Oturum açılınca başlat": "Start on login",
     "Gizli simgelere küçült": "Minimize to tray",
     "Pencereyi kapatınca ya da küçültünce MiniDesktop gizli simgelerde çalışmaya devam eder.": "When you close or minimize this window, MiniDesktop keeps running in the hidden icons.",
     "MiniDesktop'ı göster": "Show MiniDesktop",

@@ -418,7 +418,7 @@ class App:
         bottom = tk.Frame(f, bg=C["bg"])
         bottom.pack(fill="x", padx=18, pady=(4, 14))
         self.auto_var = tk.BooleanVar(value=autostart_get())
-        tk.Checkbutton(bottom, text=tr("Windows açılışında başlat"), variable=self.auto_var, command=self.toggle_autostart,
+        tk.Checkbutton(bottom, text=tr("Windows açılışında başlat") if WINDOWS else tr("Oturum açılınca başlat"), variable=self.auto_var, command=self.toggle_autostart,
                        bg=C["bg"], fg=C["text"], selectcolor=C["card"], activebackground=C["bg"], activeforeground=C["text"],
                        font=(FONT, 10), bd=0, highlightthickness=0).pack(side="left")
         Button(bottom, tr("Gizli simgelere küçült"), self.hide_to_tray, kind="ghost", padx=8, pady=3).pack(side="right")

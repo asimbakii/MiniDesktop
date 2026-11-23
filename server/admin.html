@@ -193,7 +193,8 @@
   <section class="card">
     <h2>CPU sıcaklığı</h2>
     <div>Şu an: <b id="ctemp">—</b></div>
-    <p class="muted">Windows Ryzen sıcaklığını doğrudan vermez. <a href="https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases" target="_blank">LibreHardwareMonitor</a>'ü indir, <b>yönetici olarak</b> çalıştır, <b>Options → Remote Web Server → Run</b>'ı aç (port 8085). Değer otomatik gelir.</p>
+    <p class="muted" id="ctemp-linux" hidden>Linux'ta çekirdek sensörlerinden otomatik okunur. Görünmüyorsa <code>lm-sensors</code> paketini kurup <code>sudo sensors-detect</code> çalıştır.</p>
+    <p class="muted" id="ctemp-win">Windows Ryzen sıcaklığını doğrudan vermez. <a href="https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases" target="_blank">LibreHardwareMonitor</a>'ü indir, <b>yönetici olarak</b> çalıştır, <b>Options → Remote Web Server → Run</b>'ı aç (port 8085). Değer otomatik gelir.</p>
   </section>
 </main>
 <script>
@@ -205,6 +206,8 @@ function t(s, vars) {
   return r;
 }
 const EN_HTML = {
+  'Linux\'ta çekirdek sensörlerinden otomatik okunur. Görünmüyorsa <code>lm-sensors</code> paketini kurup <code>sudo sensors-detect</code> çalıştır.':
+    'On Linux it is read automatically from the kernel sensors. If it is missing, install <code>lm-sensors</code> and run <code>sudo sensors-detect</code>.',
   'Modem bu PC\'ye yeni bir adres verdi (<code id="oldip"></code> → <code id="newip"></code>). Tablet eski adrese bağlanmaya çalışıyor: aşağıdaki QR kodu tabletle <b>yeniden okut</b>. Tablette uygulama olarak kurduysan Chrome ayarındaki adresi de güncelle (en alttaki bölüm).':
     'Your router gave this PC a new address (<code id="oldip"></code> → <code id="newip"></code>). The tablet is still trying the old one: <b>scan the QR code below again</b>. If you installed it as an app on the tablet, also update the address in the Chrome setting (last section).',
   'Tablet bu PC ile <b>aynı Wi-Fi ağında</b> olmalı. Tabletin kamerasıyla QR kodu okut ya da Chrome\'da şu adresi açıp PIN\'i gir:':
@@ -424,6 +427,8 @@ async function load() {
   $("#s-connect").hidden = s.enabled;
   $("#s-disconnect").hidden = $("#sreauth").hidden = !s.enabled;
   if (s.custom_app && !sappLoaded) { sappLoaded = true; $("#sappid").value = s.app_id; }
+  $("#ctemp-linux").hidden = d.platform !== "linux";
+  $("#ctemp-win").hidden = d.platform === "linux";
   $("#ctemp").textContent = d.cpu_temp != null ? d.cpu_temp.toFixed(0) + " °C" : t("okunamıyor");
 }
 let modesLoaded = false, devLoaded = false, keysLoaded = false, rpcOpened = false, sappLoaded = false;

@@ -1,6 +1,6 @@
 # MiniDesktop
 
-Android tableti, Windows PC için küçük bir "ikinci masaüstü"ne çevirir. Dört mini pencere:
+Android tableti, Windows ya da Linux PC için küçük bir "ikinci masaüstü"ne çevirir. Dört mini pencere:
 
 - **YouTube Music / Spotify oynatıcı:** Kapak, parça bilgisi, sarılabilir ilerleme çubuğu, oynatıcının ses seviyesi. Windows medya API'siyle çalıştığı için Chrome, Spotify ve diğer oynatıcıların hepsiyle uyumlu.
 - **Discord:** Arkadaş listesi ve okunmamış DM rozetleri, mikrofon/kulaklık düğmeleri; tam kontrol modunda ses kanalı ve konuşanlar.
@@ -43,6 +43,19 @@ Kaldırmak için Ayarlar → Uygulamalar → MiniDesktop. Kaldırıcı sunucuyu 
 
 Veriler (eşli cihazlar, Discord token'ları, ayarlar, log) `%LOCALAPPDATA%\MiniDesktop` klasöründe durur. **Bu klasörü kimseyle paylaşma.**
 
+## Linux
+
+```bash
+curl -L https://github.com/asimbakii/MiniDesktop/releases/latest/download/MiniDesktop-linux.tar.gz | tar xz
+cd MiniDesktop && ./install.sh     # oturumla başlasın istersen: --autostart
+```
+
+Kullanıcıya özel kurar (`~/.local/share/minidesktop`), eksik paketleri (apt/dnf/pacman/zypper) sorarak kurar, menüye ekler. Kaldırmak: `./uninstall.sh`.
+- Medya: MPRIS (Spotify, Chrome/Firefox, VLC…). Ses: PulseAudio/PipeWire. Pano: wl-clipboard ya da xclip.
+- Discord mute/deafen kısayol modu X11/XWayland'de çalışır (xdotool/ydotool/wtype); RPC modu her oturumda çalışır.
+- Discord arkadaş listesi için köprüyü `bridge/build-bridge.sh` ile kendin derlemelisin.
+- GNOME'da tepsi simgesi için *AppIndicator* eklentisi gerekir. Güvenlik duvarı açıksa: `sudo ufw allow 8765/tcp`.
+
 ## Kaynaktan derleme (geliştiriciler için)
 
 - `build.bat` → `dist\MiniDesktop-Setup-<VERSION>.exe`. PyInstaller ile exe üretir, Inno Setup ile kurulum dosyası yapar.
@@ -65,7 +78,8 @@ Chrome, "uygulama olarak yükleme"yi (tam ekran, ekranı açık tutma) sadece g�
 3. MiniDesktop'ı aç, Chrome menüsünden **Uygulamayı yükle**'yi seç.
 
 ## Gereksinimler
-- Windows 10/11 (x64). Kurulum dosyasıyla Python gerekmez.
+- Windows 10/11 (x64): kurulum dosyasıyla Python gerekmez.
+- Linux: Python 3.10+, systemd, PulseAudio ya da PipeWire.
 - Discord Social SDK köprüsünü derlemek için: Visual Studio 2022+ ("C++ ile masaüstü geliştirme" iş yükü). SDK'nın lisansı gereği SDK dosyaları bu depoda yoktur; herkes kendi Developer Portal hesabından indirir.
 
 ## Discord

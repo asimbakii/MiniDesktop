@@ -4,13 +4,14 @@
 
 <h1>MiniDesktop</h1>
 
-<p><b>Turn any tablet into a second, touch-friendly mini desktop for your Windows PC.</b><br>
+<p><b>Turn any tablet into a second, touch-friendly mini desktop for your Windows or Linux PC.</b><br>
 Media controls · Discord friends &amp; mic · live CPU/GPU stats · Claude Code &amp; developer dashboard · game mode</p>
 
 <p>
   <a href="https://github.com/asimbakii/MiniDesktop/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/asimbakii/MiniDesktop?label=download&amp;color=4cc2ff"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/asimbakii/MiniDesktop?color=6ccb5f"></a>
-  <img alt="Windows 10/11" src="https://img.shields.io/badge/PC-Windows%2010%20%7C%2011-0078d4">
+  <a href="https://github.com/asimbakii/MiniDesktop/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/asimbakii/MiniDesktop/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="PC: Windows 10/11 and Linux" src="https://img.shields.io/badge/PC-Windows%20%7C%20Linux-0078d4">
   <img alt="Tablets: Android, iPad, HarmonyOS" src="https://img.shields.io/badge/tablet-Android%20%7C%20iPad%20%7C%20HarmonyOS-8b5cf6">
   <a href="https://github.com/asimbakii/MiniDesktop/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/asimbakii/MiniDesktop?style=social"></a>
 </p>
@@ -31,7 +32,7 @@ Media controls · Discord friends &amp; mic · live CPU/GPU stats · Claude Code
 
 <br>
 
-> **What is MiniDesktop?** A free, open-source **second screen / control panel** for Windows. Install it on your PC, scan a QR code with your tablet, and your tablet becomes a dashboard that looks like a tiny Windows desktop: a YouTube Music / Spotify player, Discord, Task Manager-style performance gauges, a per-app volume mixer and, for developers, a live **Claude Code**, git and terminal dashboard. Think of it as a **Stream Deck alternative** that uses the tablet you already own. No app store, no account, no cloud: everything stays on your home network.
+> **What is MiniDesktop?** A free, open-source **second screen / control panel** for Windows and Linux. Install it on your PC, scan a QR code with your tablet, and your tablet becomes a dashboard that looks like a tiny Windows desktop: a YouTube Music / Spotify player, Discord, Task Manager-style performance gauges, a per-app volume mixer and, for developers, a live **Claude Code**, git and terminal dashboard. Think of it as a **Stream Deck alternative** that uses the tablet you already own. No app store, no account, no cloud: everything stays on your home network.
 
 <br>
 
@@ -82,6 +83,8 @@ A Windows-style **lock screen** with clock, weather and now playing; a dimmed re
 
 ## ⬇️ Download &amp; install
 
+### Windows 10 / 11
+
 <table>
 <tr><td>
 
@@ -99,6 +102,34 @@ A Windows-style **lock screen** with clock, weather and now playing; a dimmed re
 🌍 **Languages:** English and Turkish. MiniDesktop follows your Windows display language automatically; change it any time in the admin panel (*Language / Dil*). The tablet, admin panel and tray app switch together. [Add your language](CONTRIBUTING.md#adding-a-language) — it is a single dictionary per component.
 
 The window closes / minimizes to the **system tray** (hidden icons) and keeps running. Right-click the tray icon to open the admin panel, copy the tablet address, stop/start the server or quit. *Start with Windows* is a checkbox in the window and in the installer.
+
+### Linux
+
+```bash
+curl -L https://github.com/asimbakii/MiniDesktop/releases/latest/download/MiniDesktop-linux.tar.gz | tar xz
+cd MiniDesktop && ./install.sh            # add --autostart to start with your session
+```
+
+`install.sh` installs per user into `~/.local/share/minidesktop` (no root for MiniDesktop itself), offers to install the few missing system packages (apt, dnf, pacman, zypper), adds **MiniDesktop** to your app menu and a `minidesktop` command, and starts it. Remove it with `./uninstall.sh`.
+
+<details>
+<summary><b>Linux details</b> — what is used and what to know</summary>
+
+| Feature | On Linux |
+|---|---|
+| Media player | **MPRIS** (D-Bus): Spotify, Chrome/Chromium/Firefox (YouTube Music), VLC, Rhythmbox, Elisa… |
+| Volume mixer | **PulseAudio / PipeWire** (`pipewire-pulse`) — master and per-app volume |
+| Performance | psutil + NVML; CPU temperature from kernel sensors (`k10temp`, `coretemp`) |
+| Clipboard | `wl-clipboard` (Wayland) or `xclip` / `xsel` (X11); KeePassXC/KDE password entries are skipped |
+| Discord mute/deafen | Keybind mode via `xdotool` (X11), `ydotool` or `wtype` (Wayland). Discord's global keybinds work on X11 / XWayland. Full control (RPC) works on any session. |
+| Discord friends &amp; DMs | Needs the Social SDK bridge. The Linux package doesn't include it yet: build it with `bridge/build-bridge.sh` (see *Build from source*). |
+| Power menu | `loginctl lock-session`, `systemctl suspend / reboot / poweroff` |
+| Game mode | Steam (native + **Proton**), Heroic, Lutris, itch |
+| Tray icon | AppIndicator (KDE, XFCE, Cinnamon, …). **GNOME** needs the *AppIndicator and KStatusNotifierItem Support* extension. |
+| Firewall | If `ufw` / `firewalld` is active: `sudo ufw allow 8765/tcp` (the installer tells you) |
+
+Every push is tested on Ubuntu (Python 3.10 and 3.12) against a real MPRIS player, PulseAudio, X11 (Xvfb), the server and the tray app — see the [CI workflow](.github/workflows/ci.yml).
+</details>
 
 ---
 
@@ -204,12 +235,12 @@ Admin panel → *Developer mode* → **Install**. MiniDesktop adds hooks (`Sessi
 ## 🧭 How it works
 
 ```
- ┌───────────────────────── Windows PC ─────────────────────────┐         ┌──────── Tablet ────────┐
- │ MiniDesktop.exe (tray app)                                   │         │ Browser / home-screen  │
+ ┌──────────────────── PC (Windows / Linux) ────────────────────┐         ┌──────── Tablet ────────┐
+ │ MiniDesktop tray app                                         │         │ Browser / home-screen  │
  │   └─ server (Python, FastAPI + WebSocket, port 8765)         │  Wi-Fi  │ web app (HTML/JS/CSS)  │
- │        ├─ Windows media & audio APIs (WinRT, Core Audio)     │ ◄─────► │  live state over       │
+ │        ├─ media & audio: WinRT + Core Audio / MPRIS + Pulse  │ ◄─────► │  live state over       │
  │        ├─ psutil + NVML (performance)                        │   LAN   │  WebSocket, commands   │
- │        ├─ Discord RPC (local pipe) + Social SDK bridge (C++) │         │  back to the PC        │
+ │        ├─ Discord RPC (local IPC) + Social SDK bridge (C++)  │         │  back to the PC        │
  │        ├─ Claude Code hooks, git / gh, commands, clipboard   │         └────────────────────────┘
  │        └─ admin panel: http://localhost:8765/admin           │
  └──────────────────────────────────────────────────────────────┘
@@ -217,11 +248,13 @@ Admin panel → *Developer mode* → **Install**. MiniDesktop adds hooks (`Sessi
 
 - Everything runs **locally**; nothing is sent to a cloud service of ours. External calls: Open-Meteo (weather, only the city name), Discord, and GitHub through your own `gh` login.
 - Tablets pair with a **6-digit PIN / QR code** and get a per-device token. The admin panel only opens on the PC itself (`localhost`).
-- Data lives in `%LOCALAPPDATA%\MiniDesktop` (paired devices, Discord tokens, settings, log).
+- Data lives in `%LOCALAPPDATA%\MiniDesktop` on Windows and `~/.local/share/minidesktop/data` on Linux (paired devices, Discord tokens, settings, log).
 
 ---
 
 ## 🛠️ Build from source
+
+**Windows**
 
 ```powershell
 git clone https://github.com/asimbakii/MiniDesktop.git
@@ -231,8 +264,17 @@ powershell -ExecutionPolicy Bypass -File tools\setup.ps1   # installs Python 3.1
 build.bat                                                   # PyInstaller + Inno Setup -> dist\MiniDesktop-Setup-<VERSION>.exe
 ```
 
+**Linux**
+
+```bash
+git clone https://github.com/asimbakii/MiniDesktop.git && cd MiniDesktop
+./install.sh                       # or, to run from the checkout:
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/python app/launcher.py
+python3 tests/linux_smoke.py       # the CI smoke test (needs a session bus, PulseAudio and X11)
+```
+
 - Installer build needs **Inno Setup 6** (`winget install JRSoftware.InnoSetup`). The version number lives in [`VERSION`](VERSION).
-- The Discord **Social SDK is not included** in this repository (license). Download the C++ SDK from the Discord Developer Portal, extract it into `bridge/sdk/`, and run `bridge\build-bridge.bat` (Visual Studio 2022+ with C++). `build.bat` bundles the bridge automatically when it exists.
+- The Discord **Social SDK is not included** in this repository (license). Download the C++ SDK from the Discord Developer Portal, extract it into `bridge/sdk/`, and run `bridge\build-bridge.bat` (Visual Studio 2022+ with C++) or `bridge/build-bridge.sh` on Linux (CMake + g++/clang, C++20). `build.bat` / `install.sh` pick up the bridge automatically when it exists.
 - CPU temperature on AMD/Intel: run [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) as administrator with *Remote Web Server* enabled (port 8085).
 
 <details>
@@ -244,10 +286,12 @@ MiniDesktop/
 ├─ server/         FastAPI server: media, audio, stats, Discord, Social SDK, modes, dev tools, admin panel
 ├─ web/            Tablet web app (vanilla HTML/CSS/JS, no build step)
 ├─ bridge/         Discord Social SDK bridge (C++, CMake)
-├─ installer/      Inno Setup script
-├─ tools/          setup.ps1, build.ps1, Claude Code hook
+├─ installer/      Inno Setup script (Windows)
+├─ tools/          setup.ps1, build.ps1, Claude Code hook, social preview generator
+├─ tests/          Linux smoke test (CI)
 ├─ docs/           screenshots, Turkish README
-└─ build.bat       one-click installer build
+├─ build.bat       one-click Windows installer build
+└─ install.sh      Linux installer (uninstall.sh to remove)
 ```
 </details>
 
@@ -259,14 +303,14 @@ MiniDesktop/
 <summary>The tablet cannot connect</summary>
 
 - PC and tablet must be on the **same network**. Some guest/"AP isolation" Wi-Fi networks block devices from seeing each other.
-- Click **Allow** on the firewall warning in the MiniDesktop window.
+- Windows: click **Allow** on the firewall warning in the MiniDesktop window. Linux: `sudo ufw allow 8765/tcp` (or the firewalld equivalent).
 - If your router gave the PC a new IP address, scan the new QR code. A DHCP reservation in your router prevents this.
 </details>
 
 <details>
 <summary>Nothing shows in the media player</summary>
 
-The player must appear in Windows' own media overlay (the one that opens with the volume keys). YouTube Music in Chrome/Edge, Spotify and most players do.
+Windows: the player must appear in Windows' own media overlay (the one that opens with the volume keys). Linux: the player must support MPRIS — check with `playerctl -l`. YouTube Music in Chrome/Edge/Firefox, Spotify and most players do.
 </details>
 
 <details>
