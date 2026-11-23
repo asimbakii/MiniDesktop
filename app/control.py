@@ -13,7 +13,6 @@ import threading
 import time
 import urllib.request
 import webbrowser
-import winreg
 from pathlib import Path
 
 import tkinter as tk
@@ -29,8 +28,12 @@ from i18n import t as tr
 APP = "MiniDesktop"
 PORT = paths.PORT
 BASE = f"http://127.0.0.1:{PORT}"
+WINDOWS = paths.WINDOWS
+NO_WINDOW = paths.NO_WINDOW
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-NO_WINDOW = subprocess.CREATE_NO_WINDOW
+AUTOSTART_DESKTOP = Path.home() / ".config" / "autostart" / "minidesktop.desktop"
+if WINDOWS:
+    import winreg
 
 # Windows 11 koyu tema
 C = {
@@ -38,8 +41,9 @@ C = {
     "accent": "#4cc2ff", "accent_fg": "#000000", "ok": "#6ccb5f", "bad": "#ff99a4", "warn": "#ffb900",
     "btn": "#373737", "btn_hover": "#424242", "danger": "#c42b1c",
 }
-FONT = "Segoe UI Variable Text"
-FONT_D = "Segoe UI Variable Display"
+FONT = "Segoe UI Variable Text" if WINDOWS else "Sans"
+FONT_D = "Segoe UI Variable Display" if WINDOWS else "Sans"
+MONO = "Consolas" if WINDOWS else "Monospace"
 
 
 # ---------------------------------------------------------------- yardımcılar
@@ -61,10 +65,13 @@ def autostart_command() -> str:
         return f'"{sys.executable}" --tray'
     py = Path(sys.executable)
     pyw = py.with_name("pythonw.exe")
-    return f'"{pyw if pyw.exists() else py}" "{Path(__file__).with_name("launcher.py")}" --tray'
+    exe = pyw if WINDOWS and pyw.exists() else py
+    return f'"{exe}" "{Path(__file__).with_name("launcher.py")}" --tray'
 
 
 def autostart_get() -> bool:
+    if not WINDOWS:
+        return AUTOSTART_DESKTOP.exists()
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as k:
             winreg.QueryValueEx(k, APP)
@@ -74,6 +81,17 @@ def autostart_get() -> bool:
 
 
 def autostart_set(on: bool):
+    if not WINDOWS:
+        # Linux: XDG autostart girdisi (GNOME, KDE, XFCE, Cinnamon…)
+        if on:
+            AUTOSTART_DESKTOP.parent.mkdir(parents=True, exist_ok=True)
+            AUTOSTART_DESKTOP.write_text(
+                "[Desktop Entry]\nType=Application\nName=MiniDesktop\n"
+                f"Exec={autostart_command()}\nIcon={resource('icon-192.png')}\n"
+                "X-GNOME-Autostart-enabled=true\nTerminal=false\n", "utf-8")
+        else:
+            AUTOSTART_DESKTOP.unlink(missing_ok=True)
+        return
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as k:
         if on:
             winreg.SetValueEx(k, APP, 0, winreg.REG_SZ, autostart_command())
@@ -100,8 +118,8 @@ def _ps(cmd: str, timeout=20) -> str:
 
 def firewall_state() -> str:
     """'allow' | 'block' | 'none' — gelen bağlantılar bu exe için açık mı? (sadece okuma)"""
-    if not paths.FROZEN:
-        return "allow"  # geliştirme modunda python.exe kullanılıyor; kontrol etme
+    if not paths.FROZEN or not WINDOWS:
+        return "allow"  # geliştirme modu (python.exe) ya da Linux: kontrol etme
     exe = sys.executable.replace("'", "''")
     out = _ps(f"$r = Get-NetFirewallApplicationFilter -Program '{exe}' -ErrorAction SilentlyContinue | "
               "Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.Enabled -eq 'True' -and $_.Direction -eq 'Inbound' }; "
@@ -120,24 +138,70 @@ def firewall_fix():
 
 
 # ---------------------------------------------------------------- tek kopya
-kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-kernel32.CreateMutexW.restype = ctypes.c_void_p
-kernel32.CreateEventW.restype = ctypes.c_void_p
-kernel32.OpenEventW.restype = ctypes.c_void_p
-kernel32.SetEvent.argtypes = [ctypes.c_void_p]
-kernel32.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
-EVENT_NAME = "Local\\MiniDesktopShowWindow"
+class SingleInstance:
+    """İlk kopya ise 'göster' isteklerini dinler; değilse çalışan kopyayı öne getirip çıkar.
 
+    Windows: isimli mutex + olay. Linux: kullanıcıya özel Unix soketi.
+    """
 
-def claim_single_instance():
-    """İlk kopya ise 'göster' olayını döndürür; değilse mevcut kopyayı öne getirip None döner."""
-    kernel32.CreateMutexW(None, False, "Local\\MiniDesktopControl")
-    if ctypes.get_last_error() == 183:  # ERROR_ALREADY_EXISTS
-        h = kernel32.OpenEventW(0x0002, False, EVENT_NAME)  # EVENT_MODIFY_STATE
-        if h:
-            kernel32.SetEvent(h)
-        return None
-    return kernel32.CreateEventW(None, False, False, EVENT_NAME)
+    def __init__(self):
+        self._event = None
+        self._show = threading.Event()
+
+    def claim(self) -> bool:
+        if WINDOWS:
+            k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            k32.CreateMutexW.restype = k32.CreateEventW.restype = k32.OpenEventW.restype = ctypes.c_void_p
+            k32.SetEvent.argtypes = [ctypes.c_void_p]
+            k32.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+            self._k32 = k32
+            k32.CreateMutexW(None, False, "Local\\MiniDesktopControl")
+            if ctypes.get_last_error() == 183:  # ERROR_ALREADY_EXISTS
+                h = k32.OpenEventW(0x0002, False, "Local\\MiniDesktopShowWindow")
+                if h:
+                    k32.SetEvent(h)
+                return False
+            self._event = k32.CreateEventW(None, False, False, "Local\\MiniDesktopShowWindow")
+            return True
+        import os
+        run_dir = os.environ.get("XDG_RUNTIME_DIR") or str(paths.DATA_DIR)
+        sock_path = os.path.join(run_dir, "minidesktop-control.sock")
+        try:
+            with socket.socket(socket.AF_UNIX) as c:
+                c.settimeout(1)
+                c.connect(sock_path)
+                c.sendall(b"show")
+            return False
+        except OSError:
+            pass
+        try:
+            os.unlink(sock_path)  # önceki çökmüş kopyadan kalan soket
+        except OSError:
+            pass
+        srv = socket.socket(socket.AF_UNIX)
+        srv.bind(sock_path)
+        os.chmod(sock_path, 0o600)
+        srv.listen(2)
+
+        def serve():
+            while True:
+                try:
+                    conn, _ = srv.accept()
+                    with conn:
+                        if conn.recv(16) == b"show":
+                            self._show.set()
+                except OSError:
+                    return
+        threading.Thread(target=serve, daemon=True).start()
+        return True
+
+    def show_requested(self) -> bool:
+        if WINDOWS:
+            return bool(self._event) and self._k32.WaitForSingleObject(self._event, 0) == 0
+        if self._show.is_set():
+            self._show.clear()
+            return True
+        return False
 
 
 # ---------------------------------------------------------------- sunucu süreci
@@ -201,8 +265,8 @@ def card(parent, title):
 
 # ---------------------------------------------------------------- uygulama
 class App:
-    def __init__(self, show_event, start_hidden: bool):
-        self.show_event = show_event
+    def __init__(self, instance: SingleInstance, start_hidden: bool):
+        self.instance = instance
         self.server = ServerProcess()
         self.q: queue.Queue = queue.Queue()
         self.info = None
@@ -219,7 +283,11 @@ class App:
         self.root.configure(bg=C["bg"])
         self.root.resizable(False, False)
         try:
-            self.root.iconbitmap(default=str(resource("icon.ico")))
+            if WINDOWS:
+                self.root.iconbitmap(default=str(resource("icon.ico")))
+            else:
+                self._icon_img = tk.PhotoImage(file=str(resource("icon-192.png")))
+                self.root.iconphoto(True, self._icon_img)
         except Exception:
             pass
         self._dark_titlebar()
@@ -314,7 +382,7 @@ class App:
         info = tk.Frame(row, bg=C["card"])
         info.pack(side="left", fill="both", expand=True, padx=(14, 0))
         tk.Label(info, text=tr("Tablette aç ya da QR'ı okut"), bg=C["card"], fg=C["muted"], font=(FONT, 9)).pack(anchor="w")
-        self.url_lbl = tk.Label(info, text="—", bg=C["card"], fg=C["accent"], font=("Consolas", 11), cursor="hand2")
+        self.url_lbl = tk.Label(info, text="—", bg=C["card"], fg=C["accent"], font=(MONO, 11), cursor="hand2")
         self.url_lbl.pack(anchor="w", pady=(2, 0))
         self.url_lbl.bind("<Button-1>", lambda e: self.copy_url())
         tk.Label(info, text="PIN", bg=C["card"], fg=C["muted"], font=(FONT, 9)).pack(anchor="w", pady=(12, 0))
@@ -438,7 +506,7 @@ class App:
     # ---------- olay döngüsü ----------
     def _pump(self):
         try:
-            if self.show_event and kernel32.WaitForSingleObject(self.show_event, 0) == 0:
+            if self.instance.show_requested():
                 self.show()
             while True:
                 msg = self.q.get_nowait()
@@ -605,11 +673,12 @@ class App:
 
 
 def main(start_hidden: bool = False):
-    try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)  # keskin yazılar
-    except Exception:
-        pass
-    ev = claim_single_instance()
-    if ev is None:
+    if WINDOWS:
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)  # keskin yazılar
+        except Exception:
+            pass
+    instance = SingleInstance()
+    if not instance.claim():
         return  # zaten açık: mevcut pencere öne getirildi
-    App(ev, start_hidden).root.mainloop()
+    App(instance, start_hidden).root.mainloop()

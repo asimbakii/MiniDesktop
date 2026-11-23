@@ -7,6 +7,8 @@ import psutil
 VIRTUAL_HINTS = (
     "vethernet", "hyper-v", "virtualbox", "vmware", "wsl", "loopback", "bluetooth",
     "tailscale", "zerotier", "hamachi", "radmin", "vpn", "docker", "npcap", "tap-", "tun",
+    # Linux
+    "br-", "veth", "virbr", "vmnet", "vboxnet", "lxcbr", "lxdbr", "podman", "cni", "flannel", "wg", "zt",
 )
 
 
@@ -42,7 +44,7 @@ def candidates() -> list[dict]:
                 "ip": a.address,
                 "iface": name,
                 "virtual": any(h in low for h in VIRTUAL_HINTS),
-                "wifi": "wi-fi" in low or "wlan" in low or "wireless" in low,
+                "wifi": "wi-fi" in low or "wlan" in low or "wireless" in low or low.startswith("wl"),
                 "default": a.address == default,
             })
     # Gerçek adaptör > varsayılan rota > Wi-Fi/Ethernet sırası

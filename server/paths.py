@@ -1,9 +1,14 @@
 """Dosya yolları: geliştirme (kaynak koddan) ve paketlenmiş (PyInstaller exe) durumları için."""
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 FROZEN = bool(getattr(sys, "frozen", False))
+WINDOWS = sys.platform == "win32"
+LINUX = sys.platform.startswith("linux")
+# Windows'ta alt süreçler konsol penceresi açmasın
+NO_WINDOW = subprocess.CREATE_NO_WINDOW if WINDOWS else 0
 
 if FROZEN:
     APP_DIR = Path(sys.executable).resolve().parent              # MiniDesktop.exe'nin klasörü
@@ -13,8 +18,16 @@ if FROZEN:
 else:
     APP_DIR = Path(__file__).resolve().parent.parent
     RES_DIR = APP_DIR
-    DATA_DIR = APP_DIR / "data"
-    BRIDGE_EXE = APP_DIR / "bridge" / "build" / "dcbridge.exe"
+    if WINDOWS:
+        DATA_DIR = APP_DIR / "data"
+        BRIDGE_EXE = APP_DIR / "bridge" / "build" / "dcbridge.exe"
+    else:
+        # Linux: install.sh uygulamayı ~/.local/share/minidesktop/app'e kurar; veriler XDG klasöründe kalır
+        DATA_DIR = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "minidesktop" / "data"
+        # Hazır köprü (paket) ya da kaynaktan derlenmiş köprü
+        BRIDGE_EXE = APP_DIR / "bridge" / "dcbridge"
+        if not BRIDGE_EXE.exists():
+            BRIDGE_EXE = APP_DIR / "bridge" / "build" / "dcbridge"
 
 if os.environ.get("MINIDESKTOP_DATA"):
     DATA_DIR = Path(os.environ["MINIDESKTOP_DATA"])
@@ -42,5 +55,5 @@ def server_command(extra: list[str] | None = None) -> list[str]:
     if FROZEN:
         return [sys.executable, "--server", *extra]
     py = Path(sys.executable)
-    pyw = py.with_name("pythonw.exe")
-    return [str(pyw if pyw.exists() else py), str(APP_DIR / "server" / "main.py"), *extra]
+    pyw = py.with_name("pythonw.exe")  # Windows: konsol penceresi açmadan
+    return [str(pyw if WINDOWS and pyw.exists() else py), str(APP_DIR / "server" / "main.py"), *extra]

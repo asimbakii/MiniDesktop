@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  linux:
+    name: Linux (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: System packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends dbus dbus-x11 pulseaudio pulseaudio-utils xvfb xclip xdotool
+      - name: Python packages
+        run: pip install -r requirements.txt websockets
+      - name: Byte-compile
+        run: python -m compileall -q server app tools tests
+      - name: Smoke test (MPRIS, PulseAudio, X11, server, tray app)
+        run: |
+          xvfb-run -a dbus-run-session -- bash -c '
+            pulseaudio --start --exit-idle-time=-1 && sleep 1
+            pactl load-module module-null-sink sink_name=ci_sink >/dev/null
+            pactl set-default-sink ci_sink
+            python tests/linux_smoke.py'
+      - name: install.sh / uninstall.sh
+        run: |
+          ./install.sh --no-system --no-launch --autostart
+          test -x ~/.local/bin/minidesktop
+          test -f ~/.local/share/applications/minidesktop.desktop
+          test -f ~/.config/autostart/minidesktop.desktop
+          ~/.local/share/minidesktop/venv/bin/python -c "import sys; sys.path[:0]=['$HOME/.local/share/minidesktop/app/server']; import paths; print(paths.DATA_DIR)"
+          ./uninstall.sh --purge
+          test ! -e ~/.local/bin/minidesktop
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m compileall -q server app tools
+      - name: Import check
+        run: python -c "import sys; sys.path[:0]=['server','app']; import main, control, media, audio, clipboard, keys; print('ok')"

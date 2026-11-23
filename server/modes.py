@@ -9,14 +9,18 @@ from datetime import datetime
 from pathlib import Path
 
 import psutil
+
+from paths import NO_WINDOW, WINDOWS
 from i18n import t
 
 MODES = ("normal", "dev", "game", "night")
 
 # Bu klasörlerin altından çalışan bir .exe "oyun" sayılır
 GAME_DIRS = (
-    "\\steamapps\\common\\", "\\epic games\\", "\\riot games\\", "\\xboxgames\\", "\\ea games\\",
-    "\\ubisoft game launcher\\games\\", "\\gog galaxy\\games\\", "\\gog games\\", "\\battle.net\\games\\",
+    "/steamapps/common/", "/epic games/", "/riot games/", "/xboxgames/", "/ea games/",
+    "/ubisoft game launcher/games/", "/gog galaxy/games/", "/gog games/", "/battle.net/games/",
+    # Linux: Heroic, Lutris, itch
+    "/games/heroic/", "/lutris/", "/itch/apps/",
 )
 # Oyun klasörlerinde olup oyun olmayanlar (başlatıcılar, yardımcılar, duvar kağıdı vb.)
 IGNORE_NAMES = (
@@ -24,16 +28,22 @@ IGNORE_NAMES = (
     "battleye", "beservice", "setup", "redist", "dxsetup", "uninstall", "unins0", "helper", "updater",
     "overlay", "webhelper", "cefprocess", "vgtray", "service",
 )
-IGNORE_PATHS = ("\\steamworks shared\\", "\\wallpaper_engine\\", "\\steamvr\\", "\\_commonredist\\")
+IGNORE_PATHS = ("/steamworks shared/", "/wallpaper_engine/", "/steamvr/", "/_commonredist/")
+# Steam'in Linux çalışma ortamı ve Proton klasörleri oyun değildir
+IGNORE_GAME_FOLDERS = ("proton", "steamlinuxruntime", "steam linux runtime", "steamworks shared")
 
 
-def _game_name(exe_low: str, exe: str) -> str:
+def _game_name(path_low: str, path: str) -> str:
+    """Oyun klasörünün adı (son eşleşme: Proton komut satırlarında oyun yolu en sonda)."""
+    best = None
     for marker in GAME_DIRS:
-        i = exe_low.find(marker)
-        if i >= 0:
-            rest = exe[i + len(marker):]
-            return rest.split("\\", 1)[0] or Path(exe).stem
-    return Path(exe).stem
+        i = path_low.rfind(marker)
+        if i >= 0 and (best is None or i > best[0]):
+            best = (i, marker)
+    if best:
+        rest = path[best[0] + len(best[1]):]
+        return rest.split("/", 1)[0] or Path(path).stem
+    return Path(path).stem
 
 
 _candidates: dict[int, tuple] = {}  # pid -> (create_time, aday mı, oyun adı, exe adı)
@@ -52,11 +62,22 @@ def detect_game() -> dict | None:
                 exe = p.exe()
             except Exception:
                 exe = ""
-            low = exe.lower()
+            path = exe.replace("\\", "/")
+            low = path.lower()
             name = os.path.basename(low)
-            ok = bool(exe) and any(d in low for d in GAME_DIRS) and not any(x in low for x in IGNORE_PATHS) \
-                and not any(x in name for x in IGNORE_NAMES)
-            cached = (ct, ok, _game_name(low, exe) if ok else None, os.path.basename(exe))
+            ok = bool(exe) and any(d in low for d in GAME_DIRS)
+            if not ok and not WINDOWS and exe:
+                # Proton/Wine: süreç wine-preloader'dır; oyun yolu komut satırında
+                try:
+                    path = " ".join(p.cmdline()).replace("\\", "/")
+                except Exception:
+                    path = ""
+                low = path.lower()
+                ok = any(d in low for d in GAME_DIRS)
+            game = _game_name(low, path) if ok else None
+            ok = ok and not any(x in low for x in IGNORE_PATHS) and not any(x in name for x in IGNORE_NAMES) \
+                and not (game or "").lower().startswith(IGNORE_GAME_FOLDERS)
+            cached = (ct, ok, game, os.path.basename(exe))
             _candidates[pid] = cached
         if not cached[1]:
             continue
@@ -196,7 +217,18 @@ class Modes:
 def power(action: str):
     """Tabletten onaylı olarak çağrılır. Yanıt tablete ulaşsın diye kısa gecikmeyle çalışır."""
     loop = asyncio.get_running_loop()
-    flags = subprocess.CREATE_NO_WINDOW
+    if not WINDOWS:
+        cmds = {
+            "lock": ["loginctl", "lock-session"],
+            "sleep": ["systemctl", "suspend"],
+            "restart": ["systemctl", "reboot"],
+            "shutdown": ["systemctl", "poweroff"],
+        }
+        if action not in cmds:
+            raise ValueError(t("Bilinmeyen güç işlemi"))
+        loop.call_later(0.5 if action == "lock" else 1.5, lambda: subprocess.Popen(cmds[action]))
+        return
+    flags = NO_WINDOW
     if action == "lock":
         loop.call_later(0.3, ctypes.windll.user32.LockWorkStation)
     elif action == "sleep":

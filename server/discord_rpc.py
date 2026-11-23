@@ -6,6 +6,8 @@ Sağladıkları: mikrofon/kulaklık (mute/deafen), bulunduğun ses kanalı + kon
 """
 import asyncio
 import json
+import os
+import sys
 import struct
 import time
 import urllib.error
@@ -35,6 +37,25 @@ def avatar_url(user: dict) -> str:
     except Exception:
         idx = 0
     return f"https://cdn.discordapp.com/embed/avatars/{idx}.png"
+
+
+def _unix_ipc_paths():
+    """Linux/macOS: Discord'un IPC soketleri (normal, Flatpak ve Snap kurulumları)."""
+    bases = []
+    for var in ("XDG_RUNTIME_DIR", "TMPDIR", "TMP", "TEMP"):
+        if os.environ.get(var):
+            bases.append(os.environ[var])
+    bases.append("/tmp")
+    subdirs = ("", "app/com.discordapp.Discord", "app/com.discordapp.DiscordCanary", "snap.discord", "snap.discord-canary",
+               ".flatpak/com.discordapp.Discord/xdg-run")
+    out = []
+    for b in dict.fromkeys(bases):
+        for sub in subdirs:
+            for i in range(10):
+                p = os.path.join(b, sub, f"discord-ipc-{i}")
+                if os.path.exists(p) and p not in out:
+                    out.append(p)
+    return out
 
 
 class _Proto(asyncio.Protocol):
@@ -203,12 +224,20 @@ class DiscordRPC:
 
     async def _connect(self):
         loop = asyncio.get_running_loop()
-        for i in range(10):
-            try:
-                transport, _ = await loop.create_pipe_connection(lambda: _Proto(self), rf"\\.\pipe\discord-ipc-{i}")
-                return transport
-            except OSError:
-                continue
+        if sys.platform == "win32":
+            for i in range(10):
+                try:
+                    transport, _ = await loop.create_pipe_connection(lambda: _Proto(self), rf"\\.\pipe\discord-ipc-{i}")
+                    return transport
+                except OSError:
+                    continue
+        else:
+            for path in _unix_ipc_paths():
+                try:
+                    transport, _ = await loop.create_unix_connection(lambda: _Proto(self), path)
+                    return transport
+                except OSError:
+                    continue
         raise FileNotFoundError(t("Discord açık değil"))
 
     async def _auth(self):

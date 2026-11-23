@@ -5,6 +5,8 @@ Dil ayarı data/settings.json'da tutulur: "auto" (Windows diline göre), "tr" ya
 """
 import ctypes
 import json
+import os
+import sys
 import time
 
 import paths
@@ -13,12 +15,19 @@ SETTINGS = paths.DATA_DIR / "settings.json"
 LANGS = ("auto", "tr", "en")
 
 
-def _windows_lang() -> str:
-    try:
-        lid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
-        return "tr" if (lid & 0x3FF) == 0x1F else "en"  # 0x1F = Türkçe
-    except Exception:
-        return "en"
+def _system_lang() -> str:
+    """İşletim sisteminin arayüz dili: Türkçe ise "tr", değilse "en"."""
+    if sys.platform == "win32":
+        try:
+            lid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+            return "tr" if (lid & 0x3FF) == 0x1F else "en"  # 0x1F = Türkçe
+        except Exception:
+            return "en"
+    for var in ("LC_ALL", "LC_MESSAGES", "LANGUAGE", "LANG"):
+        v = os.environ.get(var)
+        if v:
+            return "tr" if v.lower().startswith("tr") else "en"
+    return "en"
 
 
 def _load() -> dict:
@@ -41,7 +50,7 @@ def lang() -> str:
     now = time.monotonic()
     if _cache["v"] is None or now - _cache["t"] > 2:
         s = setting()
-        _cache["v"] = _windows_lang() if s == "auto" else s
+        _cache["v"] = _system_lang() if s == "auto" else s
         _cache["t"] = now
     return _cache["v"]
 
@@ -118,6 +127,7 @@ EN = {
     "Medya Oynatıcı": "Media Player",
     "Bilinmeyen tuş: {part}": "Unknown key: {part}",
     "Kısayol boş": "The shortcut is empty",
+    "Kısayol gönderilemedi: xdotool, ydotool ya da wtype kurulu değil.": "Could not send the shortcut: install xdotool, ydotool or wtype.",
     # tepsi uygulaması
     "MiniDesktop gizli simgelerde çalışmaya devam ediyor. Açmak için simgeye tıkla.": "MiniDesktop keeps running in the hidden icons. Click the icon to open it.",
     "● Başlatılıyor": "● Starting",

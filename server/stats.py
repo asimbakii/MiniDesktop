@@ -6,6 +6,8 @@ import urllib.request
 
 import psutil
 
+from paths import WINDOWS
+
 try:
     import pynvml
 except ImportError:  # pragma: no cover
@@ -82,7 +84,9 @@ class Stats:
         return out
 
     def _cpu_temp(self):
-        """Windows CPU sıcaklığını doğrudan vermez; LibreHardwareMonitor'ün web sunucusundan okuruz."""
+        """Linux: çekirdek sensörleri (psutil). Windows: LibreHardwareMonitor'ün web sunucusu."""
+        if not WINDOWS:
+            return _linux_cpu_temp()
         now = time.monotonic()
         if now < self._lhm_next:
             return None
@@ -107,7 +111,32 @@ class Stats:
         return best[1] if best else None
 
 
+def _linux_cpu_temp():
+    try:
+        temps = psutil.sensors_temperatures()
+    except Exception:
+        return None
+    # AMD: k10temp/zenpower (Tctl/Tdie), Intel: coretemp (Package id 0), ARM: cpu_thermal
+    prefs = (("k10temp", ("tctl", "tdie")), ("zenpower", ("tdie", "tctl")), ("coretemp", ("package id 0",)),
+             ("cpu_thermal", ("",)), ("acpitz", ("",)))
+    for chip, labels in prefs:
+        for entry in temps.get(chip, []):
+            if any(lbl in (entry.label or "").lower() for lbl in labels):
+                return round(entry.current, 1)
+        if temps.get(chip):
+            return round(temps[chip][0].current, 1)
+    return None
+
+
 def _cpu_name() -> str:
+    if not WINDOWS:
+        try:
+            for line in open("/proc/cpuinfo", encoding="utf-8"):
+                if line.lower().startswith("model name"):
+                    return line.split(":", 1)[1].strip()
+        except Exception:
+            pass
+        return "CPU"
     try:
         import winreg
 

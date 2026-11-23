@@ -37,6 +37,8 @@ Say 'PyInstaller calisiyor (birkac dakika surebilir)...'
     --collect-submodules uvicorn `
     --collect-submodules pycaw `
     --hidden-import pystray._win32 `
+    --exclude-module media_linux --exclude-module audio_linux --exclude-module clipboard_linux `
+    --exclude-module dbus_next --exclude-module pulsectl `
     --hidden-import main `
     --hidden-import control `
     (Join-Path $root 'app\launcher.py')

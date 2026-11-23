@@ -6,10 +6,11 @@ kişi başına okunmamış sayacı (sayaç bizde tutulur; Discord'un okundu bilg
 import asyncio
 import json
 import os
-import subprocess
+import subprocess  # noqa: F401
 import time
 from pathlib import Path
 from i18n import t
+from paths import NO_WINDOW
 
 # MiniDesktop'un paylaşılan Discord uygulaması ("MiniDesktop Sosyal", Public Client).
 # Kullanıcılar kendi uygulamalarını açmadan sadece Discord'da izin vererek bağlanır.
@@ -154,7 +155,7 @@ class Social:
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
-                creationflags=subprocess.CREATE_NO_WINDOW,
+                creationflags=NO_WINDOW,
             )
         except Exception as e:
             self._set("error", t("Köprü başlatılamadı: {e}", e=e))

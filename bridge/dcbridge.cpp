@@ -9,15 +9,18 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
-#include <fcntl.h>
 #include <fstream>
 #include <functional>
-#include <io.h>
 #include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
+
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
 
 using namespace std::chrono_literals;
 
@@ -112,7 +115,9 @@ static void saveTokens(const std::string& path, const Tokens& t) {
 }
 
 int main(int argc, char** argv) {
-    _setmode(_fileno(stdout), _O_BINARY);
+#ifdef _WIN32
+    _setmode(_fileno(stdout), _O_BINARY);  // satir sonlari LF kalsin
+#endif
     if (argc < 3) {
         std::fprintf(stderr, "kullanim: dcbridge <application_id> <token_dosyasi>\n");
         return 2;
